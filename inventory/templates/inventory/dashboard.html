@@ -10,7 +10,7 @@
   <div class="container mt-4">
     <h2>Inventory Dashboard</h2>
     <p>Welcome, {{ request.user.username }} (Role: {{ request.user.role }})</p>
-    <a href="{% url 'users:logout' %}" class="btn btn-secondary">Logout</a>
+    <a href="{% url 'users:logout' %}">Logout</a>
   </div>
 </body>
 </html>
