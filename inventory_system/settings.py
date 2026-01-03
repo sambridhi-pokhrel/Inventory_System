@@ -17,6 +17,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 
     'users',
+    'inventory',
 ]
 
 MIDDLEWARE = [
@@ -75,5 +76,10 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
+
+LOGIN_URL = '/users/login/'
+LOGIN_REDIRECT_URL = '/users/dashboard/'
+LOGOUT_REDIRECT_URL = '/users/login/'
+
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
