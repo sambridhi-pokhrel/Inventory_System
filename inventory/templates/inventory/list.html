@@ -7,13 +7,41 @@
 <body class="bg-light">
 
 <div class="container mt-5">
-  <h3>Inventory List</h3>
+  <h3 class="mb-3">Inventory Items</h3>
 
-  <div class="alert alert-success">
-    Inventory page loaded successfully.
-  </div>
+  {% if user.is_superuser or user.groups.all.0.name == "Manager" %}
+    <a href="{% url 'inventory:add' %}" class="btn btn-primary mb-3">Add Item</a>
+  {% endif %}
 
-  <p>You are logged in as: <strong>{{ request.user.username }}</strong></p>
+  <table class="table table-bordered table-striped">
+    <thead class="table-dark">
+      <tr>
+        <th>Name</th>
+        <th>Quantity</th>
+        <th>Price</th>
+        <th width="180">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in items %}
+      <tr>
+        <td>{{ item.name }}</td>
+        <td>{{ item.quantity }}</td>
+        <td>{{ item.price }}</td>
+        <td>
+          {% if user.is_superuser or user.groups.all.0.name == "Manager" %}
+            <a href="{% url 'inventory:edit' item.id %}" class="btn btn-sm btn-warning">Edit</a>
+          {% endif %}
+          {% if user.is_superuser %}
+            <a href="{% url 'inventory:delete' item.id %}" class="btn btn-sm btn-danger">Delete</a>
+          {% endif %}
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="4">No items found</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
 
   <a href="{% url 'users:dashboard' %}" class="btn btn-secondary">Back to Dashboard</a>
 </div>
