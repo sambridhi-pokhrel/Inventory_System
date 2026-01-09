@@ -1,17 +1,20 @@
+from django.shortcuts import redirect
 from django.http import HttpResponseForbidden
-from functools import wraps
 
-def role_required(allowed_roles=[]):
-    def decorator(view_func):
-        @wraps(view_func)
-        def wrapper(request, *args, **kwargs):
+def admin_required(view_func):
+    def wrapper(request, *args, **kwargs):
+        if request.user.is_authenticated and request.user.is_superuser:
+            return view_func(request, *args, **kwargs)
+        return HttpResponseForbidden("Admin only")
+    return wrapper
+
+
+def manager_or_admin_required(view_func):
+    def wrapper(request, *args, **kwargs):
+        if request.user.is_authenticated:
             if request.user.is_superuser:
                 return view_func(request, *args, **kwargs)
-
-            user_groups = request.user.groups.values_list('name', flat=True)
-            if any(role in user_groups for role in allowed_roles):
+            if request.user.groups.filter(name="Manager").exists():
                 return view_func(request, *args, **kwargs)
-
-            return HttpResponseForbidden("You do not have permission to access this page")
-        return wrapper
-    return decorator
+        return HttpResponseForbidden("Manager or Admin only")
+    return wrapper

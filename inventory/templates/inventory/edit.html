@@ -1,0 +1,87 @@
+<!doctype html>
+<html>
+<head>
+    <title>Edit Item - Inventory Management</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        .header-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem 0;
+            margin-bottom: 2rem;
+        }
+    </style>
+</head>
+<body class="bg-light">
+
+<!-- Header Section -->
+<div class="header-section">
+    <div class="container">
+        <h1><i class="bi bi-pencil-square"></i> Edit Item</h1>
+        <p class="mb-0">Update item details</p>
+    </div>
+</div>
+
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-box"></i> Editing: {{ item.name }}</h5>
+                </div>
+                <div class="card-body p-4">
+                    {% if is_admin %}
+                        <div class="alert alert-success">
+                            <i class="bi bi-shield-check"></i> Admin Access
+                        </div>
+                    {% elif is_manager %}
+                        <div class="alert alert-info">
+                            <i class="bi bi-person-gear"></i> Manager Access
+                        </div>
+                    {% endif %}
+
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="name" class="form-label">
+                                <i class="bi bi-tag"></i> Item Name
+                            </label>
+                            <input type="text" class="form-control" id="name" name="name" 
+                                   value="{{ item.name }}" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="quantity" class="form-label">
+                                <i class="bi bi-box"></i> Quantity
+                            </label>
+                            <input type="number" class="form-control" id="quantity" name="quantity" 
+                                   value="{{ item.quantity }}" min="0" required>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="price" class="form-label">
+                                <i class="bi bi-currency-dollar"></i> Price ($)
+                            </label>
+                            <input type="number" class="form-control" id="price" name="price" 
+                                   value="{{ item.price }}" step="0.01" min="0" required>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-success btn-lg">
+                                <i class="bi bi-check-circle"></i> Update Item
+                            </button>
+                            <a href="{% url 'inventory:item_list' %}" class="btn btn-outline-secondary">
+                                <i class="bi bi-arrow-left"></i> Back to Inventory
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
