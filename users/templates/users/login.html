@@ -2,54 +2,108 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Login | Inventory System</title>
+  <title>Login | Inventory Management System</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+  <style>
+    .login-container {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+    }
+    .login-card {
+      backdrop-filter: blur(10px);
+      background: rgba(255, 255, 255, 0.95);
+      border: none;
+      border-radius: 1rem;
+    }
+    .password-toggle {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      cursor: pointer;
+      color: #6c757d;
+    }
+    .password-input-container {
+      position: relative;
+    }
+  </style>
 </head>
 
-<body class="bg-light d-flex align-items-center" style="height:100vh;">
+<body class="login-container d-flex align-items-center">
   <div class="container">
-    <div class="card shadow-lg p-4 mx-auto" style="max-width:420px;">
-      <h3 class="text-center mb-2">Welcome Back</h3>
-      <p class="text-center text-muted">Login to continue</p>
+    <div class="row justify-content-center">
+      <div class="col-md-5">
+        <div class="card login-card shadow-lg p-4">
+          <div class="text-center mb-4">
+            <i class="bi bi-boxes display-4 text-primary"></i>
+            <h3 class="mt-2">Welcome Back</h3>
+            <p class="text-muted">Sign in to your inventory account</p>
+          </div>
 
-      <form method="post">
-        {% csrf_token %}
+          {% if messages %}
+            {% for message in messages %}
+              <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+              </div>
+            {% endfor %}
+          {% endif %}
 
-        <div class="mb-3">
-          <label class="form-label">Username</label>
-          <input type="text" class="form-control" name="username" required>
+          <form method="post">
+            {% csrf_token %}
+
+            <div class="mb-3">
+              <label class="form-label"><i class="bi bi-person"></i> Username</label>
+              <input type="text" class="form-control" name="username" placeholder="Enter your username" required>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label"><i class="bi bi-lock"></i> Password</label>
+              <div class="password-input-container">
+                <input type="password" class="form-control" id="password" name="password" 
+                       placeholder="Enter your password" required>
+                <i class="bi bi-eye password-toggle" id="togglePassword" onclick="togglePassword()"></i>
+              </div>
+            </div>
+
+            <div class="d-grid gap-2 mb-3">
+              <button type="submit" class="btn btn-primary btn-lg">
+                <i class="bi bi-box-arrow-in-right"></i> Sign In
+              </button>
+            </div>
+          </form>
+
+          <div class="text-center">
+            <a href="{% url 'users:password_reset' %}" class="text-decoration-none">
+              <i class="bi bi-key"></i> Forgot your password?
+            </a>
+            <hr>
+            <p class="mb-0">Don't have an account?</p>
+            <a href="{% url 'users:register' %}" class="btn btn-outline-success btn-sm">
+              <i class="bi bi-person-plus"></i> Create Account
+            </a>
+          </div>
         </div>
-
-        <div class="mb-2">
-          <label class="form-label">Password</label>
-          <input type="password" class="form-control" id="password" name="password" required>
-        </div>
-
-        <!-- Show password -->
-        <div class="form-check mb-3">
-          <input class="form-check-input" type="checkbox" onclick="togglePassword()">
-          <label class="form-check-label">Show password</label>
-        </div>
-
-        {% if error %}
-          <div class="alert alert-danger py-2">{{ error }}</div>
-        {% endif %}
-
-        <button type="submit" class="btn btn-primary w-100">Login</button>
-      </form>
-
-      <div class="text-center mt-3">
-        <a href="#" class="text-decoration-none">Forgot password?</a><br>
-        <small>Don’t have an account?</small><br>
-        <a href="{% url 'users:register' %}">Create account</a>
       </div>
     </div>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script>
     function togglePassword() {
-      const pwd = document.getElementById("password");
-      pwd.type = pwd.type === "password" ? "text" : "password";
+      const passwordField = document.getElementById("password");
+      const toggleIcon = document.getElementById("togglePassword");
+      
+      if (passwordField.type === "password") {
+        passwordField.type = "text";
+        toggleIcon.classList.remove("bi-eye");
+        toggleIcon.classList.add("bi-eye-slash");
+      } else {
+        passwordField.type = "password";
+        toggleIcon.classList.remove("bi-eye-slash");
+        toggleIcon.classList.add("bi-eye");
+      }
     }
   </script>
 </body>

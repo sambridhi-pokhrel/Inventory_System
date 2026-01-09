@@ -85,6 +85,11 @@
                     <i class="bi bi-plus-circle"></i> Add New Item
                 </a>
             {% endif %}
+            {% if is_admin %}
+                <a href="{% url 'users:user_management' %}" class="btn btn-info">
+                    <i class="bi bi-people"></i> Manage Users
+                </a>
+            {% endif %}
         </div>
         <div>
             <span class="text-muted">Total Items: {{ items.count }}</span>
