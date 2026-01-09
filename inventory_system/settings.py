@@ -8,6 +8,9 @@ SECRET_KEY = 'django-insecure-j*@n4bm0(-g(u5s9g^7+8v7q88$_nii46psh%xs-ef_=0v$djw
 DEBUG = True
 ALLOWED_HOSTS = []
 
+# Custom error handlers
+handler403 = 'django.views.defaults.permission_denied'
+
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -78,7 +81,7 @@ STATIC_URL = '/static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 
 LOGIN_URL = '/users/login/'
-LOGIN_REDIRECT_URL = '/inventory/'
+LOGIN_REDIRECT_URL = '/users/dashboard/'
 LOGOUT_REDIRECT_URL = '/users/login/'
 
 # Email Configuration (for development - prints to console)

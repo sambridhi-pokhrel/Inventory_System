@@ -1,11 +1,20 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
+from django.contrib import messages
 from .models import Item
+from users.decorators import (
+    approved_user_required,
+    manager_or_admin_required,
+    admin_required,
+    role_required
+)
+from users.utils import UserRoleManager
 
 
-@login_required
+@approved_user_required
 def item_list(request):
+    """List all inventory items with search and filter functionality"""
     items = Item.objects.all()
     
     # Handle search
@@ -24,73 +33,108 @@ def item_list(request):
     elif filter_type == 'in_stock':
         items = items.filter(quantity__gt=10)
 
-    # ✅ ROLE CHECKS (DO THIS IN VIEW, NOT TEMPLATE)
-    is_admin = request.user.is_superuser
-    is_manager = request.user.groups.filter(name="Manager").exists()
-    is_staff = request.user.groups.filter(name="Staff").exists()
-
-    context = {
+    # Get role context using utility
+    context = UserRoleManager.get_context_for_user(request.user)
+    context.update({
         "items": items,
-        "is_admin": is_admin,
-        "is_manager": is_manager,
-        "is_staff": is_staff,
         "search_query": search_query,
         "filter_type": filter_type,
-    }
+    })
 
     return render(request, "inventory/list.html", context)
 
 
-@login_required
+@manager_or_admin_required
 def item_add(request):
-    # Only Admin & Manager can add
-    if not (request.user.is_superuser or request.user.groups.filter(name="Manager").exists()):
-        return redirect("inventory:item_list")
+    """Add new inventory item - Manager and Admin only"""
+    if request.method == "POST":
+        name = request.POST.get("name")
+        quantity = request.POST.get("quantity")
+        price = request.POST.get("price")
+
+        # Validate input
+        if not all([name, quantity, price]):
+            messages.error(request, "All fields are required.")
+            return render(request, "inventory/add.html")
+
+        try:
+            quantity = int(quantity)
+            price = float(price)
+            
+            if quantity < 0 or price < 0:
+                messages.error(request, "Quantity and price must be non-negative.")
+                return render(request, "inventory/add.html")
+            
+            Item.objects.create(
+                name=name,
+                quantity=quantity,
+                price=price
+            )
+            messages.success(request, f"Item '{name}' has been added successfully.")
+            return redirect("inventory:item_list")
+            
+        except (ValueError, TypeError):
+            messages.error(request, "Please enter valid numbers for quantity and price.")
+            return render(request, "inventory/add.html")
+
+    context = UserRoleManager.get_context_for_user(request.user)
+    return render(request, "inventory/add.html", context)
+
+
+@manager_or_admin_required
+def item_edit(request, item_id):
+    """Edit inventory item - Manager and Admin only"""
+    item = get_object_or_404(Item, id=item_id)
 
     if request.method == "POST":
         name = request.POST.get("name")
         quantity = request.POST.get("quantity")
         price = request.POST.get("price")
 
-        Item.objects.create(
-            name=name,
-            quantity=quantity,
-            price=price
-        )
-        return redirect("inventory:item_list")
+        # Validate input
+        if not all([name, quantity, price]):
+            messages.error(request, "All fields are required.")
+            context = UserRoleManager.get_context_for_user(request.user)
+            context["item"] = item
+            return render(request, "inventory/edit.html", context)
 
-    return render(request, "inventory/add.html")
+        try:
+            quantity = int(quantity)
+            price = float(price)
+            
+            if quantity < 0 or price < 0:
+                messages.error(request, "Quantity and price must be non-negative.")
+                context = UserRoleManager.get_context_for_user(request.user)
+                context["item"] = item
+                return render(request, "inventory/edit.html", context)
+            
+            item.name = name
+            item.quantity = quantity
+            item.price = price
+            item.save()
+            
+            messages.success(request, f"Item '{name}' has been updated successfully.")
+            return redirect("inventory:item_list")
+            
+        except (ValueError, TypeError):
+            messages.error(request, "Please enter valid numbers for quantity and price.")
+            context = UserRoleManager.get_context_for_user(request.user)
+            context["item"] = item
+            return render(request, "inventory/edit.html", context)
 
-
-@login_required
-def item_edit(request, item_id):
-    # Only Admin & Manager can edit
-    if not (request.user.is_superuser or request.user.groups.filter(name="Manager").exists()):
-        return redirect("inventory:item_list")
-
-    item = get_object_or_404(Item, id=item_id)
-
-    if request.method == "POST":
-        item.name = request.POST.get("name")
-        item.quantity = request.POST.get("quantity")
-        item.price = request.POST.get("price")
-        item.save()
-        return redirect("inventory:item_list")
-
-    context = {
-        "item": item,
-        "is_admin": request.user.is_superuser,
-        "is_manager": request.user.groups.filter(name="Manager").exists(),
-    }
+    context = UserRoleManager.get_context_for_user(request.user)
+    context["item"] = item
     return render(request, "inventory/edit.html", context)
 
 
-@login_required
+@admin_required
 def item_delete(request, item_id):
-    # Only Admin can delete
-    if not request.user.is_superuser:
-        return redirect("inventory:item_list")
-
+    """Delete inventory item - Admin only"""
     item = get_object_or_404(Item, id=item_id)
-    item.delete()
+    
+    if request.method == "POST":
+        item_name = item.name
+        item.delete()
+        messages.success(request, f"Item '{item_name}' has been deleted successfully.")
+    
     return redirect("inventory:item_list")
