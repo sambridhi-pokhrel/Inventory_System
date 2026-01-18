@@ -138,5 +138,3 @@ class UserProfile(models.Model):
 3. **Email Sent** → System sends reset link to email
 4. **Reset Form** → User clicks link and sets new password
 5. **Complete** → User can log in with new password
-
-Your inventory management system now has a complete, professional user management system ready for presentation and production use!

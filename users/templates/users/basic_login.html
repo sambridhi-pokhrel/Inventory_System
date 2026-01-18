@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Basic Login</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 50px; }
+        .form-group { margin: 10px 0; }
+        input { padding: 8px; margin: 5px; width: 200px; }
+        button { padding: 10px 20px; background: #007bff; color: white; border: none; cursor: pointer; }
+        .error { color: red; margin: 10px 0; }
+        .success { color: green; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <h2>Basic Login - Guaranteed to Work</h2>
+    
+    {% if messages %}
+        {% for message in messages %}
+            <div class="{% if message.tags == 'error' %}error{% else %}success{% endif %}">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
+    
+    <form method="post">
+        {% csrf_token %}
+        
+        <div class="form-group">
+            <label>Username:</label><br>
+            <input type="text" name="username" required>
+            <small>(Try: Staff, Manager, Sambridi, or Salon)</small>
+        </div>
+        
+        <div class="form-group">
+            <label>Password:</label><br>
+            <input type="password" name="password" required>
+            <small>(Use: password123)</small>
+        </div>
+        
+        <div class="form-group">
+            <button type="submit">Login</button>
+        </div>
+    </form>
+    
+    <hr>
+    <h3>Debug Info:</h3>
+    <p><strong>CSRF Token:</strong> {{ csrf_token|slice:":20" }}...</p>
+    <p><strong>Method:</strong> {{ request.method }}</p>
+    <p><strong>User:</strong> {{ request.user }}</p>
+    
+    <hr>
+    <p><a href="/users/login/">Back to Fancy Login</a></p>
+    <p><a href="/users/simple-login/">Simple Login</a></p>
+</body>
+</html>

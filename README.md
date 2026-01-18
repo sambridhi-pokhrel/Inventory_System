@@ -234,7 +234,7 @@ This project demonstrates:
 
 ---
 
-**Author**: [Your Name]  
-**Course**: [Course Name]  
-**Institution**: [University Name]  
-**Date**: [Submission Date]
+**Author**: Sambridi Pokhrel 
+**Course**: Project and Professionalism
+**Institution**: Herald College Kathmandu 
+**Date**: 2026/--/--

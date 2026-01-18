@@ -21,20 +21,73 @@ def login_view(request):
     if request.method == 'POST':
         username = request.POST.get('username')
         password = request.POST.get('password')
+        
+        print(f"DEBUG: Login attempt - Username: {username}, Password: {'*' * len(password) if password else 'None'}")
+
+        user = authenticate(request, username=username, password=password)
+        print(f"DEBUG: Authentication result: {user}")
+        
+        if user:
+            # Check if user is approved
+            is_approved = UserRoleManager.is_approved(user)
+            print(f"DEBUG: User approval status: {is_approved}")
+            
+            if not is_approved:
+                messages.error(request, 'Your account is pending approval. Please contact an administrator.')
+                return render(request, 'users/login.html')
+            
+            login(request, user)
+            print(f"DEBUG: Login successful, redirecting to dashboard")
+            return redirect('users:dashboard')
+        else:
+            print(f"DEBUG: Authentication failed for username: {username}")
+            messages.error(request, 'Invalid username or password.')
+
+    return render(request, 'users/login.html')
+
+
+def simple_login_view(request):
+    """Simple debug login view"""
+    if request.method == 'POST':
+        username = request.POST.get('username')
+        password = request.POST.get('password')
 
         user = authenticate(request, username=username, password=password)
         if user:
             # Check if user is approved
             if not UserRoleManager.is_approved(user):
                 messages.error(request, 'Your account is pending approval. Please contact an administrator.')
-                return render(request, 'users/login.html')
+                return render(request, 'users/simple_login.html')
             
             login(request, user)
+            messages.success(request, f'Successfully logged in as {user.username}!')
             return redirect('users:dashboard')
         else:
-            messages.error(request, 'Invalid username or password.')
+            messages.error(request, f'Invalid credentials for username: {username}')
 
-    return render(request, 'users/login.html')
+    return render(request, 'users/simple_login.html')
+
+
+def basic_login_view(request):
+    """Basic login view with minimal styling"""
+    if request.method == 'POST':
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+
+        user = authenticate(request, username=username, password=password)
+        if user:
+            # Check if user is approved
+            if not UserRoleManager.is_approved(user):
+                messages.error(request, 'Your account is pending approval. Please contact an administrator.')
+                return render(request, 'users/basic_login.html')
+            
+            login(request, user)
+            messages.success(request, f'Successfully logged in as {user.username}!')
+            return redirect('users:dashboard')
+        else:
+            messages.error(request, f'Authentication failed for username: {username}')
+
+    return render(request, 'users/basic_login.html')
 
 
 def register_view(request):

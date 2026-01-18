@@ -1,8 +1,217 @@
-{% extends 'base.html' %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Dashboard | Inventory Management System</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+  <style>
+    :root {
+      --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      --success-gradient: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+      --warning-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      --info-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+      --card-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+      --card-shadow-hover: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+      --border-radius: 1rem;
+      --transition: all 0.3s ease;
+    }
+    
+    body {
+      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      min-height: 100vh;
+    }
+    
+    .dashboard-header {
+      background: var(--primary-gradient);
+      color: white;
+      padding: 3rem 0;
+      margin-bottom: 2rem;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .dashboard-header::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="white" opacity="0.1"/><circle cx="75" cy="75" r="1" fill="white" opacity="0.1"/><circle cx="50" cy="10" r="1" fill="white" opacity="0.1"/><circle cx="10" cy="90" r="1" fill="white" opacity="0.1"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+      opacity: 0.3;
+    }
+    
+    .stat-card {
+      transition: var(--transition);
+      border: none;
+      border-radius: var(--border-radius);
+      box-shadow: var(--card-shadow);
+      overflow: hidden;
+      position: relative;
+    }
+    
+    .stat-card:hover {
+      transform: translateY(-8px);
+      box-shadow: var(--card-shadow-hover);
+    }
+    
+    .stat-card.primary { background: var(--primary-gradient); }
+    .stat-card.success { background: var(--success-gradient); }
+    .stat-card.warning { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+    .stat-card.info { background: var(--info-gradient); }
+    
+    .stat-icon {
+      font-size: 3rem;
+      opacity: 0.9;
+      margin-bottom: 1rem;
+    }
+    
+    .stat-number {
+      font-size: 2.5rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+    
+    .stat-label {
+      font-size: 1rem;
+      opacity: 0.9;
+      font-weight: 500;
+    }
+    
+    .section-card {
+      background: white;
+      border-radius: var(--border-radius);
+      box-shadow: var(--card-shadow);
+      border: none;
+      transition: var(--transition);
+    }
+    
+    .section-card:hover {
+      box-shadow: var(--card-shadow-hover);
+    }
+    
+    .section-header {
+      background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+      border-radius: var(--border-radius) var(--border-radius) 0 0;
+      padding: 1.5rem;
+      border-bottom: 1px solid #dee2e6;
+    }
+    
+    .quick-action-btn {
+      border-radius: 0.75rem;
+      padding: 0.75rem 1.5rem;
+      font-weight: 500;
+      transition: var(--transition);
+      border: none;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .quick-action-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.15);
+    }
+    
+    .role-badge {
+      font-size: 1.1rem;
+      padding: 0.75rem 1.5rem;
+      border-radius: 2rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    .list-group-item {
+      border: none;
+      border-radius: 0.5rem !important;
+      margin-bottom: 0.5rem;
+      box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.05);
+      transition: var(--transition);
+    }
+    
+    .list-group-item:hover {
+      transform: translateX(5px);
+      box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.1);
+    }
+    
+    .progress-modern {
+      height: 8px;
+      border-radius: 4px;
+      background: #e9ecef;
+      overflow: hidden;
+    }
+    
+    .progress-bar-modern {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 0.6s ease;
+    }
+    
+    .alert-modern {
+      border: none;
+      border-radius: var(--border-radius);
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    
+    .navbar-modern {
+      background: rgba(255, 255, 255, 0.95) !important;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+      border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    }
+    
+    @media (max-width: 768px) {
+      .dashboard-header { padding: 2rem 0; }
+      .stat-number { font-size: 2rem; }
+      .stat-icon { font-size: 2.5rem; }
+    }
+  </style>
+</head>
 
-{% block title %}Dashboard | Inventory Management System{% endblock %}
+<body>
+  <!-- Navigation Bar -->
+  <nav class="navbar navbar-expand-lg navbar-light navbar-modern fixed-top">
+    <div class="container">
+      <a class="navbar-brand fw-bold text-primary" href="{% url 'users:dashboard' %}">
+        <i class="bi bi-boxes"></i> Inventory Pro
+      </a>
+      <div class="ms-auto d-flex align-items-center">
+        <span class="me-3">{{ user.first_name|default:user.username }}</span>
+        {% if user_role == "admin" %}
+          <span class="badge bg-danger role-badge">Administrator</span>
+        {% elif user_role == "manager" %}
+          <span class="badge bg-info role-badge">Manager</span>
+        {% else %}
+          <span class="badge bg-warning role-badge">Staff</span>
+        {% endif %}
+      </div>
+    </div>
+  </nav>
 
-{% block content %}
+  <!-- Add top padding for fixed navbar -->
+  <div style="padding-top: 80px;">
+    
+    <!-- Messages -->
+    {% if messages %}
+      <div class="container">
+        {% for message in messages %}
+          <div class="alert alert-{{ message.tags }} alert-modern alert-dismissible fade show" role="alert">
+            {% if message.tags == 'error' %}
+              <i class="bi bi-exclamation-triangle me-2"></i>
+            {% elif message.tags == 'success' %}
+              <i class="bi bi-check-circle me-2"></i>
+            {% else %}
+              <i class="bi bi-info-circle me-2"></i>
+            {% endif %}
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
 <!-- Dashboard Header -->
 <div class="bg-gradient text-white py-4 mb-4" style="background: var(--primary-gradient);">
     <div class="container">
@@ -271,4 +480,7 @@
         </div>
     </div>
 </div>
-{% endblock %}
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
