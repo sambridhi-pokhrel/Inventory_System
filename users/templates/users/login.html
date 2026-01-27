@@ -5,106 +5,245 @@
   <title>Login | Inventory Management System</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="/static/css/emerald-theme.css" rel="stylesheet">
   <style>
     .login-container {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: var(--background-gradient);
       min-height: 100vh;
+      position: relative;
+      overflow: hidden;
     }
+    
+    .login-container::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="forest-dots" width="20" height="20" patternUnits="userSpaceOnUse"><circle cx="10" cy="10" r="1" fill="rgba(15,77,15,0.1)"/></pattern></defs><rect width="100" height="100" fill="url(%23forest-dots)"/></svg>');
+    }
+    
     .login-card {
-      backdrop-filter: blur(10px);
+      backdrop-filter: blur(20px);
       background: rgba(255, 255, 255, 0.95);
-      border: none;
-      border-radius: 1rem;
+      border: 1px solid rgba(15, 77, 15, 0.1);
+      border-radius: var(--border-radius-lg);
+      box-shadow: var(--card-shadow-lg);
+      position: relative;
+      z-index: 2;
     }
+    
+    .login-header {
+      background: var(--primary-gradient);
+      color: white;
+      border-radius: var(--border-radius-lg) var(--border-radius-lg) 0 0;
+      margin: -2rem -2rem 2rem -2rem;
+      padding: 2rem;
+      text-align: center;
+    }
+    
+    .password-input-container {
+      position: relative;
+    }
+    
     .password-toggle {
       position: absolute;
-      right: 10px;
+      right: 15px;
       top: 50%;
       transform: translateY(-50%);
       cursor: pointer;
-      color: #6c757d;
+      color: var(--secondary-color);
+      transition: var(--transition-fast);
     }
-    .password-input-container {
-      position: relative;
+    
+    .password-toggle:hover {
+      color: var(--primary-color);
+    }
+    
+    .form-floating .form-control {
+      border: 2px solid rgba(15, 77, 15, 0.1);
+    }
+    
+    .form-floating .form-control:focus {
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 0.2rem rgba(15, 77, 15, 0.25);
+    }
+    
+    .btn-login {
+      background: var(--primary-gradient);
+      border: none;
+      padding: 0.75rem 2rem;
+      font-weight: 600;
+      border-radius: var(--border-radius);
+      transition: var(--transition);
+      box-shadow: var(--card-shadow);
+    }
+    
+    .btn-login:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--card-shadow-hover);
+    }
+    
+    .login-footer {
+      background: rgba(15, 77, 15, 0.05);
+      border-radius: 0 0 var(--border-radius-lg) var(--border-radius-lg);
+      margin: 2rem -2rem -2rem -2rem;
+      padding: 1.5rem 2rem;
+      text-align: center;
     }
   </style>
 </head>
 
-<body class="login-container d-flex align-items-center">
+<body class="login-container d-flex align-items-center fade-in">
   <div class="container">
     <div class="row justify-content-center">
-      <div class="col-md-5">
-        <div class="card login-card shadow-lg p-4">
-          <div class="text-center mb-4">
-            <i class="bi bi-boxes display-4 text-primary"></i>
-            <h3 class="mt-2">Welcome Back</h3>
-            <p class="text-muted">Sign in to your inventory account</p>
+      <div class="col-md-5 col-lg-4">
+        <div class="card login-card p-4">
+          <!-- Login Header -->
+          <div class="login-header">
+            <i class="bi bi-box-seam display-4 mb-3"></i>
+            <h3 class="fw-bold mb-2">Welcome Back</h3>
+            <p class="mb-0 opacity-90">Sign in to your inventory account</p>
           </div>
 
+          <!-- Messages -->
           {% if messages %}
             {% for message in messages %}
               <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {% if message.tags == 'error' %}
+                  <i class="bi bi-exclamation-triangle me-2"></i>
+                {% elif message.tags == 'success' %}
+                  <i class="bi bi-check-circle me-2"></i>
+                {% else %}
+                  <i class="bi bi-info-circle me-2"></i>
+                {% endif %}
                 {{ message }}
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
               </div>
             {% endfor %}
           {% endif %}
 
-          <form method="post">
+          <!-- Login Form -->
+          <form method="post" class="needs-validation" novalidate>
             {% csrf_token %}
-
-            <div class="mb-3">
-              <label class="form-label"><i class="bi bi-person"></i> Username</label>
-              <input type="text" class="form-control" name="username" placeholder="Enter your username" required>
-            </div>
-
-            <div class="mb-3">
-              <label class="form-label"><i class="bi bi-lock"></i> Password</label>
-              <div class="password-input-container">
-                <input type="password" class="form-control" id="password" name="password" 
-                       placeholder="Enter your password" required>
-                <i class="bi bi-eye password-toggle" id="togglePassword" onclick="togglePassword()"></i>
+            
+            <!-- Username Field -->
+            <div class="form-floating mb-3">
+              <input type="text" class="form-control" id="username" name="username" 
+                     placeholder="Username" required>
+              <label for="username">
+                <i class="bi bi-person me-2"></i>Username
+              </label>
+              <div class="invalid-feedback">
+                Please enter your username.
               </div>
             </div>
 
-            <div class="d-grid gap-2 mb-3">
-              <button type="submit" class="btn btn-primary btn-lg">
-                <i class="bi bi-box-arrow-in-right"></i> Sign In
+            <!-- Password Field -->
+            <div class="form-floating mb-4">
+              <div class="password-input-container">
+                <input type="password" class="form-control" id="password" name="password" 
+                       placeholder="Password" required>
+                <label for="password">
+                  <i class="bi bi-lock me-2"></i>Password
+                </label>
+                <i class="bi bi-eye password-toggle" id="togglePassword"></i>
+              </div>
+              <div class="invalid-feedback">
+                Please enter your password.
+              </div>
+            </div>
+
+            <!-- Login Button -->
+            <div class="d-grid mb-3">
+              <button type="submit" class="btn btn-primary btn-login">
+                <i class="bi bi-box-arrow-in-right me-2"></i>
+                Sign In
               </button>
+            </div>
+
+            <!-- Forgot Password Link -->
+            <div class="text-center">
+              <a href="{% url 'users:password_reset' %}" class="text-decoration-none text-primary">
+                <i class="bi bi-question-circle me-1"></i>
+                Forgot your password?
+              </a>
             </div>
           </form>
 
-          <div class="text-center">
-            <a href="{% url 'users:password_reset' %}" class="text-decoration-none">
-              <i class="bi bi-key"></i> Forgot your password?
+          <!-- Login Footer -->
+          <div class="login-footer">
+            <p class="text-muted mb-2">
+              <i class="bi bi-info-circle me-2"></i>
+              Don't have an account?
+            </p>
+            <a href="{% url 'users:register' %}" class="btn btn-outline-primary btn-sm">
+              <i class="bi bi-person-plus me-1"></i>
+              Create Account
             </a>
-            <hr>
-            <p class="mb-0">Don't have an account?</p>
-            <a href="{% url 'users:register' %}" class="btn btn-outline-success btn-sm">
-              <i class="bi bi-person-plus"></i> Create Account
-            </a>
+          </div>
+        </div>
+
+        <!-- Demo Credentials -->
+        <div class="card mt-3 bg-light border-0">
+          <div class="card-body text-center py-3">
+            <h6 class="text-muted mb-2">
+              <i class="bi bi-key me-2"></i>Demo Credentials
+            </h6>
+            <div class="row text-sm">
+              <div class="col-4">
+                <strong class="text-success">Manager:</strong><br>
+                <small>manager_user<br>testpass123</small>
+              </div>
+              <div class="col-4">
+                <strong class="text-warning">Staff:</strong><br>
+                <small>staff_user<br>testpass123</small>
+              </div>
+              <div class="col-4">
+                <strong class="text-info">Admin:</strong><br>
+                <small>Your superuser<br>credentials</small>
+              </div>
+            </div>
           </div>
         </div>
       </div>
     </div>
   </div>
 
+  <!-- Bootstrap JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  
+  <!-- Custom JS -->
   <script>
-    function togglePassword() {
-      const passwordField = document.getElementById("password");
-      const toggleIcon = document.getElementById("togglePassword");
+    // Password visibility toggle
+    document.getElementById('togglePassword').addEventListener('click', function() {
+      const password = document.getElementById('password');
+      const type = password.getAttribute('type') === 'password' ? 'text' : 'password';
+      password.setAttribute('type', type);
       
-      if (passwordField.type === "password") {
-        passwordField.type = "text";
-        toggleIcon.classList.remove("bi-eye");
-        toggleIcon.classList.add("bi-eye-slash");
-      } else {
-        passwordField.type = "password";
-        toggleIcon.classList.remove("bi-eye-slash");
-        toggleIcon.classList.add("bi-eye");
-      }
-    }
+      // Toggle icon
+      this.classList.toggle('bi-eye');
+      this.classList.toggle('bi-eye-slash');
+    });
+
+    // Form validation
+    (function() {
+      'use strict';
+      window.addEventListener('load', function() {
+        var forms = document.getElementsByClassName('needs-validation');
+        var validation = Array.prototype.filter.call(forms, function(form) {
+          form.addEventListener('submit', function(event) {
+            if (form.checkValidity() === false) {
+              event.preventDefault();
+              event.stopPropagation();
+            }
+            form.classList.add('was-validated');
+          }, false);
+        });
+      }, false);
+    })();
   </script>
 </body>
 </html>

@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Transaction - Inventory Management</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="/static/css/emerald-theme.css" rel="stylesheet">
+</head>
+<body class="fade-in">
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-light">
+        <div class="container">
+            <a class="navbar-brand" href="{% url 'users:dashboard' %}">
+                <i class="bi bi-box-seam me-2"></i>
+                Inventory System
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'users:dashboard' %}">
+                            <i class="bi bi-speedometer2 me-1"></i>Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'inventory:item_list' %}">
+                            <i class="bi bi-box me-1"></i>Inventory
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="{% url 'inventory:transaction_list' %}">
+                            <i class="bi bi-receipt me-1"></i>Transactions
+                        </a>
+                    </li>
+                    {% if user.is_superuser %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'users:user_management' %}">
+                            <i class="bi bi-people me-1"></i>Users
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+                <ul class="navbar-nav">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
+                            <i class="bi bi-person-circle me-1"></i>{{ user.first_name|default:user.username }}
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="{% url 'users:logout' %}">
+                                <i class="bi bi-box-arrow-right me-2"></i>Logout
+                            </a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Header Section -->
+    <div class="dashboard-header">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h1 class="display-5 fw-bold mb-2">
+                        <i class="bi bi-plus-circle me-3"></i>
+                        Create Transaction
+                    </h1>
+                    <p class="lead mb-0">Record a new sale or purchase transaction</p>
+                </div>
+                <div class="col-md-4 text-md-end">
+                    <a href="{% url 'inventory:transaction_list' %}" class="btn btn-outline-light">
+                        <i class="bi bi-arrow-left me-1"></i>Back to Transactions
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Messages -->
+    {% if messages %}
+        <div class="container mb-4">
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                    {% if message.tags == 'error' %}
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                    {% elif message.tags == 'success' %}
+                        <i class="bi bi-check-circle me-2"></i>
+                    {% else %}
+                        <i class="bi bi-info-circle me-2"></i>
+                    {% endif %}
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <!-- Main Content -->
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="card">
+                    <div class="card-header bg-light">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-receipt me-2 text-primary"></i>
+                            Transaction Details
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <form method="post" class="needs-validation" novalidate>
+                            {% csrf_token %}
+                            
+                            <div class="row">
+                                <!-- Transaction Type -->
+                                <div class="col-md-6 mb-3">
+                                    <label for="{{ form.transaction_type.id_for_label }}" class="form-label fw-bold">
+                                        <i class="bi bi-arrow-up-down me-2 text-primary"></i>
+                                        Transaction Type
+                                    </label>
+                                    {{ form.transaction_type }}
+                                    {% if form.transaction_type.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.transaction_type.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Item Selection -->
+                                <div class="col-md-6 mb-3">
+                                    <label for="{{ form.item.id_for_label }}" class="form-label fw-bold">
+                                        <i class="bi bi-box me-2 text-primary"></i>
+                                        Item
+                                    </label>
+                                    {{ form.item }}
+                                    {% if form.item.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.item.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <!-- Quantity -->
+                                <div class="col-md-4 mb-3">
+                                    <label for="{{ form.quantity.id_for_label }}" class="form-label fw-bold">
+                                        <i class="bi bi-hash me-2 text-primary"></i>
+                                        Quantity
+                                    </label>
+                                    {{ form.quantity }}
+                                    {% if form.quantity.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.quantity.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Unit Price -->
+                                <div class="col-md-4 mb-3">
+                                    <label for="{{ form.unit_price.id_for_label }}" class="form-label fw-bold">
+                                        <i class="bi bi-currency-dollar me-2 text-primary"></i>
+                                        Unit Price
+                                    </label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">Rs.</span>
+                                        {{ form.unit_price }}
+                                    </div>
+                                    {% if form.unit_price.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.unit_price.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Total Amount (Auto-calculated) -->
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label fw-bold">
+                                        <i class="bi bi-calculator me-2 text-primary"></i>
+                                        Total Amount
+                                    </label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">Rs.</span>
+                                        <input type="text" class="form-control" id="totalAmount" readonly 
+                                               placeholder="0.00" style="background-color: #f8f9fa;">
+                                    </div>
+                                    <small class="text-muted">Automatically calculated</small>
+                                </div>
+                            </div>
+
+                            <!-- Notes -->
+                            <div class="mb-4">
+                                <label for="{{ form.notes.id_for_label }}" class="form-label fw-bold">
+                                    <i class="bi bi-chat-text me-2 text-primary"></i>
+                                    Notes (Optional)
+                                </label>
+                                {{ form.notes }}
+                                {% if form.notes.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ form.notes.errors.0 }}
+                                    </div>
+                                {% endif %}
+                                <small class="text-muted">Add any additional information about this transaction</small>
+                            </div>
+
+                            <!-- Current Stock Info -->
+                            <div class="alert alert-info" id="stockInfo" style="display: none;">
+                                <i class="bi bi-info-circle me-2"></i>
+                                <strong>Current Stock:</strong> <span id="currentStock">-</span> units
+                                <div id="stockWarning" class="mt-2" style="display: none;">
+                                    <i class="bi bi-exclamation-triangle me-2"></i>
+                                    <strong>Warning:</strong> This sale will result in insufficient stock!
+                                </div>
+                            </div>
+
+                            <!-- Form Actions -->
+                            <div class="d-flex justify-content-between">
+                                <a href="{% url 'inventory:transaction_list' %}" class="btn btn-outline-secondary">
+                                    <i class="bi bi-x-circle me-1"></i>Cancel
+                                </a>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-check-circle me-1"></i>Create Transaction
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Transaction Type Info -->
+                <div class="row mt-4">
+                    <div class="col-md-6">
+                        <div class="card border-success">
+                            <div class="card-body text-center">
+                                <i class="bi bi-arrow-up-circle display-4 text-success mb-3"></i>
+                                <h5 class="text-success">Sale Transaction</h5>
+                                <p class="text-muted mb-0">
+                                    Records item sales and reduces inventory stock
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card border-info">
+                            <div class="card-body text-center">
+                                <i class="bi bi-arrow-down-circle display-4 text-info mb-3"></i>
+                                <h5 class="text-info">Purchase Transaction</h5>
+                                <p class="text-muted mb-0">
+                                    Records item purchases and increases inventory stock
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Custom JS -->
+    <script>
+        // Auto-calculate total amount
+        function calculateTotal() {
+            const quantity = parseFloat(document.getElementById('{{ form.quantity.id_for_label }}').value) || 0;
+            const unitPrice = parseFloat(document.getElementById('{{ form.unit_price.id_for_label }}').value) || 0;
+            const total = quantity * unitPrice;
+            document.getElementById('totalAmount').value = total.toFixed(2);
+        }
+
+        // Update stock information when item is selected
+        function updateStockInfo() {
+            const itemSelect = document.getElementById('{{ form.item.id_for_label }}');
+            const selectedOption = itemSelect.options[itemSelect.selectedIndex];
+            const stockInfo = document.getElementById('stockInfo');
+            const currentStock = document.getElementById('currentStock');
+            const stockWarning = document.getElementById('stockWarning');
+            
+            if (selectedOption.value) {
+                // Get item price via AJAX
+                fetch(`/inventory/api/item-price/?item_id=${selectedOption.value}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            currentStock.textContent = data.quantity;
+                            document.getElementById('{{ form.unit_price.id_for_label }}').value = data.price;
+                            stockInfo.style.display = 'block';
+                            calculateTotal();
+                            checkStockWarning();
+                        }
+                    })
+                    .catch(error => console.error('Error:', error));
+            } else {
+                stockInfo.style.display = 'none';
+            }
+        }
+
+        // Check if sale quantity exceeds available stock
+        function checkStockWarning() {
+            const transactionType = document.getElementById('{{ form.transaction_type.id_for_label }}').value;
+            const quantity = parseFloat(document.getElementById('{{ form.quantity.id_for_label }}').value) || 0;
+            const currentStockText = document.getElementById('currentStock').textContent;
+            const currentStockValue = parseFloat(currentStockText) || 0;
+            const stockWarning = document.getElementById('stockWarning');
+            
+            if (transactionType === 'SALE' && quantity > currentStockValue) {
+                stockWarning.style.display = 'block';
+            } else {
+                stockWarning.style.display = 'none';
+            }
+        }
+
+        // Event listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            const quantityInput = document.getElementById('{{ form.quantity.id_for_label }}');
+            const unitPriceInput = document.getElementById('{{ form.unit_price.id_for_label }}');
+            const itemSelect = document.getElementById('{{ form.item.id_for_label }}');
+            const transactionTypeSelect = document.getElementById('{{ form.transaction_type.id_for_label }}');
+
+            quantityInput.addEventListener('input', function() {
+                calculateTotal();
+                checkStockWarning();
+            });
+            
+            unitPriceInput.addEventListener('input', calculateTotal);
+            itemSelect.addEventListener('change', updateStockInfo);
+            transactionTypeSelect.addEventListener('change', checkStockWarning);
+
+            // Form validation
+            const forms = document.querySelectorAll('.needs-validation');
+            Array.from(forms).forEach(form => {
+                form.addEventListener('submit', event => {
+                    if (!form.checkValidity()) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                    }
+                    form.classList.add('was-validated');
+                });
+            });
+        });
+    </script>
+</body>
+</html>

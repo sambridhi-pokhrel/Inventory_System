@@ -1,9 +1,10 @@
 {% load inventory_extras %}
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="utf-8">
-    <title>Inventory List | Inventory Management System</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transaction History - Inventory Management</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -28,12 +29,12 @@
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link active" href="{% url 'inventory:item_list' %}">
+                        <a class="nav-link" href="{% url 'inventory:item_list' %}">
                             <i class="bi bi-box me-1"></i>Inventory
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'inventory:transaction_list' %}">
+                        <a class="nav-link active" href="{% url 'inventory:transaction_list' %}">
                             <i class="bi bi-receipt me-1"></i>Transactions
                         </a>
                     </li>
@@ -67,10 +68,10 @@
             <div class="row align-items-center">
                 <div class="col-md-8">
                     <h1 class="display-5 fw-bold mb-2">
-                        <i class="bi bi-box me-3"></i>
-                        Inventory Management
+                        <i class="bi bi-receipt me-3"></i>
+                        Transaction History
                     </h1>
-                    <p class="lead mb-0">Manage your inventory items and stock levels</p>
+                    <p class="lead mb-0">Track all sales and purchase transactions</p>
                 </div>
                 <div class="col-md-4 text-md-end">
                     <div class="role-badge slide-up">
@@ -106,151 +107,150 @@
         <!-- Action Bar -->
         <div class="row mb-4">
             <div class="col-md-6">
-                {% if user|can_add_items %}
-                    <a href="{% url 'inventory:item_add' %}" class="btn btn-primary me-2">
-                        <i class="bi bi-plus-circle me-1"></i>Add New Item
+                {% if user|get_user_role == 'admin' or user|get_user_role == 'manager' %}
+                    <a href="{% url 'inventory:transaction_create' %}" class="btn btn-primary me-2">
+                        <i class="bi bi-plus-circle me-1"></i>New Transaction
                     </a>
                 {% endif %}
-                <a href="{% url 'inventory:export_csv' %}" class="btn btn-outline-primary">
+                <a href="{% url 'inventory:transaction_export_csv' %}" class="btn btn-outline-primary">
                     <i class="bi bi-download me-1"></i>Export CSV
                 </a>
             </div>
             <div class="col-md-6">
-                <!-- Search and Filter Form -->
+                <!-- Filter Form -->
                 <form method="get" class="d-flex gap-2">
-                    <input type="text" name="search" class="form-control" placeholder="Search items..." 
-                           value="{{ request.GET.search }}">
-                    <select name="status" class="form-select" style="max-width: 150px;">
-                        <option value="">All Items</option>
-                        <option value="in-stock" {% if request.GET.status == 'in-stock' %}selected{% endif %}>In Stock</option>
-                        <option value="low-stock" {% if request.GET.status == 'low-stock' %}selected{% endif %}>Low Stock</option>
-                        <option value="out-of-stock" {% if request.GET.status == 'out-of-stock' %}selected{% endif %}>Out of Stock</option>
+                    <select name="type" class="form-select" style="max-width: 120px;">
+                        <option value="">All Types</option>
+                        <option value="SALE" {% if request.GET.type == 'SALE' %}selected{% endif %}>Sales</option>
+                        <option value="PURCHASE" {% if request.GET.type == 'PURCHASE' %}selected{% endif %}>Purchases</option>
                     </select>
+                    <input type="date" name="date_from" class="form-control" value="{{ request.GET.date_from }}" 
+                           style="max-width: 150px;" placeholder="From Date">
+                    <input type="date" name="date_to" class="form-control" value="{{ request.GET.date_to }}" 
+                           style="max-width: 150px;" placeholder="To Date">
                     <button type="submit" class="btn btn-outline-primary">
-                        <i class="bi bi-search"></i>
+                        <i class="bi bi-funnel"></i>
                     </button>
                 </form>
             </div>
         </div>
 
-        <!-- Inventory Statistics -->
+        <!-- Transaction Summary Cards -->
         <div class="row mb-4">
             <div class="col-lg-3 col-md-6 mb-3">
                 <div class="stat-card success">
                     <div class="card-body text-center">
-                        <i class="bi bi-box-seam display-6 text-success mb-2"></i>
-                        <h4 class="fw-bold text-success">{{ items|length }}</h4>
-                        <p class="text-muted mb-0">Total Items</p>
+                        <i class="bi bi-arrow-up-circle display-6 text-success mb-2"></i>
+                        <h4 class="fw-bold text-success">{{ total_sales|rupees|default:"Rs. 0.00" }}</h4>
+                        <p class="text-muted mb-0">Total Sales</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6 mb-3">
+                <div class="stat-card info">
+                    <div class="card-body text-center">
+                        <i class="bi bi-arrow-down-circle display-6 text-info mb-2"></i>
+                        <h4 class="fw-bold text-info">{{ total_purchases|rupees|default:"Rs. 0.00" }}</h4>
+                        <p class="text-muted mb-0">Total Purchases</p>
                     </div>
                 </div>
             </div>
             <div class="col-lg-3 col-md-6 mb-3">
                 <div class="stat-card warning">
                     <div class="card-body text-center">
-                        <i class="bi bi-exclamation-triangle display-6 text-warning mb-2"></i>
-                        <h4 class="fw-bold text-warning">0</h4>
-                        <p class="text-muted mb-0">Low Stock</p>
+                        <i class="bi bi-receipt display-6 text-warning mb-2"></i>
+                        <h4 class="fw-bold text-warning">{{ transactions.count|default:0 }}</h4>
+                        <p class="text-muted mb-0">Total Transactions</p>
                     </div>
                 </div>
             </div>
             <div class="col-lg-3 col-md-6 mb-3">
-                <div class="stat-card danger">
+                <div class="stat-card success">
                     <div class="card-body text-center">
-                        <i class="bi bi-x-circle display-6 text-danger mb-2"></i>
-                        <h4 class="fw-bold text-danger">0</h4>
-                        <p class="text-muted mb-0">Out of Stock</p>
-                    </div>
-                </div>
-            </div>
-                            <div class="col-lg-3 col-md-6 mb-3">
-                <div class="stat-card info">
-                    <div class="card-body text-center">
-                        <i class="bi bi-cash display-6 text-info mb-2"></i>
-                        <h4 class="fw-bold text-info">Rs. 0</h4>
-                        <p class="text-muted mb-0">Total Value</p>
+                        <i class="bi bi-graph-up display-6 text-success mb-2"></i>
+                        <h4 class="fw-bold text-success">Rs. 0.00</h4>
+                        <p class="text-muted mb-0">Net Amount</p>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Inventory Table -->
+        <!-- Transaction Table -->
         <div class="card">
             <div class="card-header bg-light">
                 <h5 class="card-title mb-0">
                     <i class="bi bi-list-ul me-2 text-primary"></i>
-                    Inventory Items
-                    {% if request.GET.search or request.GET.status %}
-                        <small class="text-muted">
-                            (Filtered{% if request.GET.search %} by "{{ request.GET.search }}"{% endif %}{% if request.GET.status %} - {{ request.GET.status|title }}{% endif %})
-                        </small>
+                    Recent Transactions
+                    {% if request.GET.type or request.GET.date_from or request.GET.date_to %}
+                        <small class="text-muted">(Filtered)</small>
                     {% endif %}
                 </h5>
             </div>
             <div class="card-body p-0">
-                {% if items %}
+                {% if transactions %}
                     <div class="table-responsive">
                         <table class="table table-hover mb-0">
                             <thead>
                                 <tr>
-                                    <th>Item Name</th>
+                                    <th>Date</th>
+                                    <th>Type</th>
+                                    <th>Item</th>
                                     <th>Quantity</th>
-                                    <th>Price</th>
-                                    <th>Total Value</th>
-                                    <th>Status</th>
+                                    <th>Unit Price</th>
+                                    <th>Total Amount</th>
+                                    <th>Performed By</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for item in items %}
+                                {% for transaction in transactions %}
                                     <tr>
                                         <td>
                                             <div class="d-flex align-items-center">
+                                                <i class="bi bi-calendar me-2 text-muted"></i>
+                                                <div>
+                                                    <div class="fw-bold">{{ transaction.timestamp|date:"M d, Y" }}</div>
+                                                    <small class="text-muted">{{ transaction.timestamp|time:"H:i" }}</small>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            {% if transaction.transaction_type == 'SALE' %}
+                                                <span class="badge bg-success">
+                                                    <i class="bi bi-arrow-up me-1"></i>Sale
+                                                </span>
+                                            {% else %}
+                                                <span class="badge bg-info">
+                                                    <i class="bi bi-arrow-down me-1"></i>Purchase
+                                                </span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="d-flex align-items-center">
                                                 <i class="bi bi-box me-2 text-primary"></i>
-                                                <strong>{{ item.name }}</strong>
+                                                <strong>{{ transaction.item.name }}</strong>
                                             </div>
                                         </td>
                                         <td>
-                                            <span class="fw-bold">{{ item.quantity }}</span>
+                                            <span class="fw-bold">{{ transaction.quantity }}</span>
                                         </td>
                                         <td>
-                                            <span class="text-success fw-bold">{{ item.price|rupees }}</span>
+                                            <span class="text-success fw-bold">{{ transaction.unit_price|rupees }}</span>
                                         </td>
                                         <td>
-                                            <span class="text-info fw-bold">{{ item.quantity|mul:item.price|rupees }}</span>
+                                            <span class="text-primary fw-bold">{{ transaction.total_amount|rupees }}</span>
                                         </td>
                                         <td>
-                                            <span class="stock-status {{ item.stock_status }}">
-                                                {% if item.stock_status == 'in-stock' %}
-                                                    <i class="bi bi-check-circle"></i>
-                                                    In Stock
-                                                {% elif item.stock_status == 'low-stock' %}
-                                                    <i class="bi bi-exclamation-triangle"></i>
-                                                    Low Stock
-                                                {% else %}
-                                                    <i class="bi bi-x-circle"></i>
-                                                    Out of Stock
-                                                {% endif %}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <div class="btn-group btn-group-sm" role="group">
-                                                {% if user|can_edit_items %}
-                                                    <a href="{% url 'inventory:item_edit' item.id %}" 
-                                                       class="btn btn-outline-primary" title="Edit">
-                                                        <i class="bi bi-pencil"></i>
-                                                    </a>
-                                                {% endif %}
-                                                {% if user|can_delete_items %}
-                                                    <a href="{% url 'inventory:item_delete' item.id %}" 
-                                                       class="btn btn-outline-danger" title="Delete"
-                                                       onclick="return confirm('Are you sure you want to delete {{ item.name }}?')">
-                                                        <i class="bi bi-trash"></i>
-                                                    </a>
-                                                {% endif %}
-                                                {% if not user|can_edit_items and not user|can_delete_items %}
-                                                    <span class="badge bg-secondary">View Only</span>
-                                                {% endif %}
+                                            <div class="d-flex align-items-center">
+                                                <i class="bi bi-person me-2 text-muted"></i>
+                                                {{ transaction.performed_by.first_name|default:transaction.performed_by.username }}
                                             </div>
+                                        </td>
+                                        <td>
+                                            <a href="{% url 'inventory:transaction_detail' transaction.id %}" 
+                                               class="btn btn-outline-primary btn-sm" title="View Details">
+                                                <i class="bi bi-eye"></i>
+                                            </a>
                                         </td>
                                     </tr>
                                 {% endfor %}
@@ -259,19 +259,19 @@
                     </div>
                 {% else %}
                     <div class="text-center py-5">
-                        <i class="bi bi-inbox display-1 text-muted mb-3"></i>
-                        <h4 class="text-muted">No items found</h4>
+                        <i class="bi bi-receipt display-1 text-muted mb-3"></i>
+                        <h4 class="text-muted">No transactions found</h4>
                         <p class="text-muted">
-                            {% if request.GET.search or request.GET.status %}
-                                Try adjusting your search criteria or 
-                                <a href="{% url 'inventory:item_list' %}" class="text-primary">clear filters</a>
+                            {% if request.GET.type or request.GET.date_from or request.GET.date_to %}
+                                Try adjusting your filter criteria or 
+                                <a href="{% url 'inventory:transaction_list' %}" class="text-primary">clear filters</a>
                             {% else %}
-                                {% if user|can_add_items %}
-                                    <a href="{% url 'inventory:item_add' %}" class="btn btn-primary mt-2">
-                                        <i class="bi bi-plus-circle me-1"></i>Add Your First Item
+                                {% if user|get_user_role == 'admin' or user|get_user_role == 'manager' %}
+                                    <a href="{% url 'inventory:transaction_create' %}" class="btn btn-primary mt-2">
+                                        <i class="bi bi-plus-circle me-1"></i>Create Your First Transaction
                                     </a>
                                 {% else %}
-                                    Contact a manager to add inventory items.
+                                    Contact a manager to create transactions.
                                 {% endif %}
                             {% endif %}
                         </p>

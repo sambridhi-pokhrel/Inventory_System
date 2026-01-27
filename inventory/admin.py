@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Item
+from .models import Item, Transaction
 
 @admin.register(Item)
 class ItemAdmin(admin.ModelAdmin):
@@ -46,3 +46,29 @@ class ItemAdmin(admin.ModelAdmin):
             item.save()
         self.message_user(request, f'{queryset.count()} items restocked (+50 each).')
     restock_items.short_description = "Restock selected items (+50)"
+
+@admin.register(Transaction)
+class TransactionAdmin(admin.ModelAdmin):
+    list_display = ('item', 'transaction_type', 'quantity', 'unit_price', 'total_amount', 'performed_by', 'timestamp')
+    list_filter = ('transaction_type', 'timestamp', 'item')
+    search_fields = ('item__name', 'performed_by__username')
+    readonly_fields = ('total_amount', 'timestamp')
+    ordering = ('-timestamp',)
+    
+    fieldsets = (
+        ('Transaction Details', {
+            'fields': ('item', 'transaction_type', 'quantity', 'unit_price')
+        }),
+        ('Additional Information', {
+            'fields': ('performed_by', 'notes')
+        }),
+        ('Calculated Fields', {
+            'fields': ('total_amount', 'timestamp'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    def get_readonly_fields(self, request, obj=None):
+        if obj:  # Editing existing transaction
+            return self.readonly_fields + ('item', 'transaction_type', 'quantity', 'unit_price', 'performed_by')
+        return self.readonly_fields

@@ -2,16 +2,14 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q, Sum, F
 from django.contrib import messages
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
+from django.core.paginator import Paginator
+from django.utils import timezone
+from datetime import datetime, timedelta
 import csv
 import io
-from reportlab.pdfgen import canvas
-from reportlab.lib.pagesizes import letter, A4
-from reportlab.lib import colors
-from reportlab.lib.units import inch
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from .models import Item
+from .models import Item, Transaction
+from .forms import TransactionForm, TransactionFilterForm
 from users.decorators import (
     approved_user_required,
     manager_or_admin_required,
@@ -297,3 +295,175 @@ def item_delete(request, item_id):
         messages.success(request, f"Item '{item_name}' has been deleted successfully.")
     
     return redirect("inventory:item_list")
+
+# ==================== TRANSACTION VIEWS ====================
+
+@approved_user_required
+def transaction_list(request):
+    """List all transactions with filtering and pagination"""
+    transactions = Transaction.objects.select_related('item', 'performed_by').all()
+    
+    # Handle filtering
+    filter_form = TransactionFilterForm(request.GET)
+    if filter_form.is_valid():
+        if filter_form.cleaned_data['transaction_type']:
+            transactions = transactions.filter(
+                transaction_type=filter_form.cleaned_data['transaction_type']
+            )
+        
+        if filter_form.cleaned_data['item']:
+            transactions = transactions.filter(
+                item=filter_form.cleaned_data['item']
+            )
+        
+        if filter_form.cleaned_data['date_from']:
+            transactions = transactions.filter(
+                timestamp__date__gte=filter_form.cleaned_data['date_from']
+            )
+        
+        if filter_form.cleaned_data['date_to']:
+            transactions = transactions.filter(
+                timestamp__date__lte=filter_form.cleaned_data['date_to']
+            )
+    
+    # Pagination
+    paginator = Paginator(transactions, 20)  # Show 20 transactions per page
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    # Calculate summary statistics
+    total_sales = Transaction.objects.filter(transaction_type='SALE').aggregate(
+        total=Sum('total_amount')
+    )['total'] or 0
+    
+    total_purchases = Transaction.objects.filter(transaction_type='PURCHASE').aggregate(
+        total=Sum('total_amount')
+    )['total'] or 0
+    
+    recent_transactions = Transaction.objects.select_related('item', 'performed_by')[:5]
+    
+    context = UserRoleManager.get_context_for_user(request.user)
+    context.update({
+        'page_obj': page_obj,
+        'filter_form': filter_form,
+        'total_sales': total_sales,
+        'total_purchases': total_purchases,
+        'recent_transactions': recent_transactions,
+        'transaction_count': transactions.count(),
+    })
+    
+    return render(request, 'inventory/transaction_list.html', context)
+
+
+@manager_or_admin_required
+def transaction_create(request):
+    """Create new transaction - Manager and Admin only"""
+    if request.method == 'POST':
+        form = TransactionForm(request.POST)
+        if form.is_valid():
+            try:
+                transaction = form.save(commit=False)
+                transaction.performed_by = request.user
+                transaction.save()
+                
+                messages.success(
+                    request, 
+                    f"{transaction.transaction_type.title()} transaction for {transaction.item.name} "
+                    f"(Qty: {transaction.quantity}) completed successfully."
+                )
+                return redirect('inventory:transaction_list')
+                
+            except Exception as e:
+                messages.error(request, f"Error creating transaction: {str(e)}")
+        else:
+            messages.error(request, "Please correct the errors below.")
+    else:
+        form = TransactionForm()
+    
+    context = UserRoleManager.get_context_for_user(request.user)
+    context.update({
+        'form': form,
+        'items': Item.objects.all().order_by('name'),
+    })
+    
+    return render(request, 'inventory/transaction_create.html', context)
+
+
+@approved_user_required
+def transaction_detail(request, transaction_id):
+    """View transaction details"""
+    transaction = get_object_or_404(
+        Transaction.objects.select_related('item', 'performed_by'),
+        id=transaction_id
+    )
+    
+    context = UserRoleManager.get_context_for_user(request.user)
+    context['transaction'] = transaction
+    
+    return render(request, 'inventory/transaction_detail.html', context)
+
+
+@manager_or_admin_required
+def get_item_price(request):
+    """AJAX endpoint to get item price for transaction form"""
+    item_id = request.GET.get('item_id')
+    if item_id:
+        try:
+            item = Item.objects.get(id=item_id)
+            return JsonResponse({
+                'price': str(item.price),
+                'quantity': item.quantity,
+                'name': item.name
+            })
+        except Item.DoesNotExist:
+            pass
+    
+    return JsonResponse({'error': 'Item not found'}, status=404)
+
+
+@manager_or_admin_required
+def transaction_export_csv(request):
+    """Export transaction data to CSV - Manager and Admin only"""
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="transactions_report.csv"'
+    
+    writer = csv.writer(response)
+    
+    # Write header
+    writer.writerow([
+        'Date', 'Time', 'Item', 'Type', 'Quantity', 
+        'Unit Price ($)', 'Total Amount ($)', 'Performed By', 'Notes'
+    ])
+    
+    # Write transaction data
+    for transaction in Transaction.objects.select_related('item', 'performed_by').all():
+        writer.writerow([
+            transaction.timestamp.strftime('%Y-%m-%d'),
+            transaction.timestamp.strftime('%H:%M:%S'),
+            transaction.item.name,
+            transaction.transaction_type,
+            transaction.quantity,
+            f"{transaction.unit_price:.2f}",
+            f"{transaction.total_amount:.2f}",
+            transaction.performed_by.get_full_name() or transaction.performed_by.username,
+            transaction.notes or ''
+        ])
+    
+    # Write summary
+    writer.writerow([])  # Empty row
+    writer.writerow(['SUMMARY'])
+    
+    total_sales = Transaction.objects.filter(transaction_type='SALE').aggregate(
+        total=Sum('total_amount')
+    )['total'] or 0
+    
+    total_purchases = Transaction.objects.filter(transaction_type='PURCHASE').aggregate(
+        total=Sum('total_amount')
+    )['total'] or 0
+    
+    writer.writerow(['Total Sales ($)', f"{total_sales:.2f}"])
+    writer.writerow(['Total Purchases ($)', f"{total_purchases:.2f}"])
+    writer.writerow(['Net Amount ($)', f"{total_sales - total_purchases:.2f}"])
+    writer.writerow(['Total Transactions', Transaction.objects.count()])
+    
+    return response
