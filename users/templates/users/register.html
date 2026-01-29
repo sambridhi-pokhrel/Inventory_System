@@ -2,152 +2,788 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Register | Inventory Management System</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    .register-container {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    :root {
+      --primary-color: #714b67;
+      --primary-light: #8a5f7d;
+      --primary-dark: #5a3c52;
+      --secondary-color: #2c3e50;
+      --accent-color: #34495e;
+      --background-primary: #f8fafc;
+      --background-secondary: #ffffff;
+      --text-primary: #2d3748;
+      --text-secondary: #718096;
+      --border-color: rgba(113, 75, 103, 0.15);
+      --shadow-light: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      --shadow-medium: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+      --shadow-large: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+      --gradient-primary: linear-gradient(135deg, #714b67 0%, #8a5f7d 100%);
+      --gradient-background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--gradient-background);
       min-height: 100vh;
-      padding: 2rem 0;
+      color: var(--text-primary);
+      overflow-x: hidden;
     }
-    .register-card {
-      backdrop-filter: blur(10px);
-      background: rgba(255, 255, 255, 0.95);
-      border: none;
-      border-radius: 1rem;
+
+    /* Background Pattern */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-image: 
+        radial-gradient(circle at 25% 25%, rgba(113, 75, 103, 0.05) 0%, transparent 50%),
+        radial-gradient(circle at 75% 75%, rgba(52, 73, 94, 0.05) 0%, transparent 50%);
+      z-index: -1;
     }
-    .password-toggle {
+
+    .register-container {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1rem;
+    }
+
+    .register-wrapper {
+      width: 100%;
+      max-width: 1200px;
+      background: var(--background-secondary);
+      border-radius: 24px;
+      box-shadow: var(--shadow-large);
+      overflow: hidden;
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .branding-section {
+      background: var(--gradient-primary);
+      color: white;
+      padding: 4rem 3rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .branding-section::before {
+      content: '';
       position: absolute;
-      right: 10px;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="0.5"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
+      opacity: 0.3;
+    }
+
+    .branding-content {
+      position: relative;
+      z-index: 2;
+    }
+
+    .system-logo {
+      width: 80px;
+      height: 80px;
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 2rem;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .system-logo i {
+      font-size: 2.5rem;
+      color: white;
+    }
+
+    .system-title {
+      font-size: 2.25rem;
+      font-weight: 700;
+      line-height: 1.2;
+      margin-bottom: 1rem;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .system-tagline {
+      font-size: 1.125rem;
+      font-weight: 400;
+      opacity: 0.9;
+      line-height: 1.6;
+      margin-bottom: 2.5rem;
+    }
+
+    .benefit-list {
+      list-style: none;
+    }
+
+    .benefit-list li {
+      display: flex;
+      align-items: center;
+      margin-bottom: 1rem;
+      font-size: 1rem;
+      opacity: 0.9;
+    }
+
+    .benefit-list i {
+      margin-right: 0.75rem;
+      font-size: 1.125rem;
+      color: rgba(255, 255, 255, 0.8);
+    }
+
+    .register-section {
+      padding: 4rem 3rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .register-header {
+      text-align: center;
+      margin-bottom: 2.5rem;
+    }
+
+    .register-title {
+      font-size: 2rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 0.5rem;
+    }
+
+    .register-subtitle {
+      font-size: 1rem;
+      color: var(--text-secondary);
+      font-weight: 400;
+    }
+
+    .form-group {
+      margin-bottom: 1.5rem;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--text-primary);
+      margin-bottom: 0.5rem;
+    }
+
+    .form-label .required {
+      color: #dc2626;
+      margin-left: 0.25rem;
+    }
+
+    .input-wrapper {
+      position: relative;
+    }
+
+    .form-control {
+      width: 100%;
+      padding: 1rem 1rem 1rem 3rem;
+      font-size: 1rem;
+      border: 2px solid var(--border-color);
+      border-radius: 12px;
+      background: var(--background-secondary);
+      color: var(--text-primary);
+      transition: all 0.3s ease;
+      font-weight: 400;
+    }
+
+    .form-control:focus {
+      outline: none;
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 3px rgba(113, 75, 103, 0.1);
+      background: white;
+    }
+
+    .form-control::placeholder {
+      color: var(--text-secondary);
+      font-weight: 400;
+    }
+
+    .form-control.is-invalid {
+      border-color: #dc2626;
+    }
+
+    .form-control.is-valid {
+      border-color: #059669;
+    }
+
+    .input-icon {
+      position: absolute;
+      left: 1rem;
       top: 50%;
       transform: translateY(-50%);
-      cursor: pointer;
-      color: #6c757d;
+      color: var(--text-secondary);
+      font-size: 1.125rem;
+      transition: color 0.3s ease;
     }
-    .password-input-container {
-      position: relative;
+
+    .form-control:focus + .input-icon {
+      color: var(--primary-color);
+    }
+
+    .password-toggle {
+      position: absolute;
+      right: 1rem;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      cursor: pointer;
+      font-size: 1.125rem;
+      padding: 0.25rem;
+      border-radius: 4px;
+      transition: all 0.3s ease;
+    }
+
+    .password-toggle:hover {
+      color: var(--primary-color);
+      background: rgba(113, 75, 103, 0.1);
+    }
+
+    .invalid-feedback {
+      display: block;
+      width: 100%;
+      margin-top: 0.25rem;
+      font-size: 0.875rem;
+      color: #dc2626;
+    }
+
+    .password-strength {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      margin-top: 0.25rem;
+    }
+
+    .btn-primary {
+      width: 100%;
+      padding: 1rem 2rem;
+      font-size: 1rem;
+      font-weight: 600;
+      background: var(--gradient-primary);
+      border: none;
+      border-radius: 12px;
+      color: white;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: var(--shadow-light);
+      margin-bottom: 1.5rem;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-medium);
+      background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary-color) 100%);
+    }
+
+    .btn-primary:active {
+      transform: translateY(0);
+    }
+
+    .form-footer {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .login-link {
+      color: var(--primary-color);
+      text-decoration: none;
+      font-size: 0.875rem;
+      font-weight: 500;
+      transition: color 0.3s ease;
+    }
+
+    .login-link:hover {
+      color: var(--primary-dark);
+      text-decoration: underline;
+    }
+
+    .approval-notice {
+      background: linear-gradient(135deg, rgba(37, 99, 235, 0.1) 0%, rgba(59, 130, 246, 0.05) 100%);
+      border: 1px solid rgba(37, 99, 235, 0.2);
+      border-radius: 16px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      border-left: 4px solid #2563eb;
+    }
+
+    .approval-header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 0.75rem;
+    }
+
+    .approval-header i {
+      color: #2563eb;
+      margin-right: 0.5rem;
+      font-size: 1.125rem;
+    }
+
+    .approval-header h6 {
+      margin: 0;
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .approval-text {
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+      line-height: 1.5;
+      margin: 0;
+    }
+
+    .alert {
+      border: none;
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      margin-bottom: 1.5rem;
+      border-left: 4px solid;
+    }
+
+    .alert-danger {
+      background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(239, 68, 68, 0.05) 100%);
+      border-left-color: #ef4444;
+      color: #dc2626;
+    }
+
+    .alert-success {
+      background: linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(34, 197, 94, 0.05) 100%);
+      border-left-color: #22c55e;
+      color: #16a34a;
+    }
+
+    /* Two-column form layout */
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 1024px) {
+      .register-wrapper {
+        max-width: 900px;
+      }
+      
+      .branding-section,
+      .register-section {
+        padding: 3rem 2rem;
+      }
+      
+      .system-title {
+        font-size: 2rem;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .register-wrapper {
+        margin: 1rem;
+        border-radius: 16px;
+      }
+      
+      .branding-section,
+      .register-section {
+        padding: 2rem 1.5rem;
+      }
+      
+      .system-title {
+        font-size: 1.75rem;
+      }
+      
+      .form-row {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Animation */
+    .register-wrapper {
+      animation: slideUp 0.6s ease-out;
+    }
+
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .benefit-list li {
+      animation: fadeIn 0.6s ease-out forwards;
+    }
+
+    .benefit-list li:nth-child(1) { animation-delay: 0.1s; }
+    .benefit-list li:nth-child(2) { animation-delay: 0.2s; }
+    .benefit-list li:nth-child(3) { animation-delay: 0.3s; }
+    .benefit-list li:nth-child(4) { animation-delay: 0.4s; }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateX(-20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
     }
   </style>
 </head>
 
-<body class="register-container">
-  <div class="container">
-    <div class="row justify-content-center">
-      <div class="col-md-6">
-        <div class="card register-card shadow-lg p-4">
-          <div class="text-center mb-4">
-            <i class="bi bi-person-plus display-4 text-success"></i>
-            <h3 class="mt-2">Create Account</h3>
-            <p class="text-muted">Join our inventory management system</p>
+<body>
+  <div class="register-container">
+    <div class="register-wrapper">
+      <div class="row g-0 h-100">
+        <!-- Branding Section -->
+        <div class="col-lg-6">
+          <div class="branding-section h-100">
+            <div class="branding-content">
+              <div class="system-logo">
+                <i class="bi bi-boxes"></i>
+              </div>
+              
+              <h1 class="system-title">
+                Inventory Management System
+                <br>with Predictive Reordering
+              </h1>
+              
+              <p class="system-tagline">
+                Smart stock tracking and data-driven inventory planning for modern businesses
+              </p>
+              
+              <ul class="benefit-list">
+                <li>
+                  <i class="bi bi-graph-up-arrow"></i>
+                  AI-powered demand forecasting and predictive analytics
+                </li>
+                <li>
+                  <i class="bi bi-shield-check"></i>
+                  Role-based access control with enterprise security
+                </li>
+                <li>
+                  <i class="bi bi-speedometer2"></i>
+                  Real-time inventory tracking and automated alerts
+                </li>
+                <li>
+                  <i class="bi bi-people"></i>
+                  Collaborative team management and approval workflows
+                </li>
+              </ul>
+            </div>
           </div>
+        </div>
 
-          {% if messages %}
-            {% for message in messages %}
-              <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-                {{ message }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        <!-- Registration Section -->
+        <div class="col-lg-6">
+          <div class="register-section">
+            <div class="register-header">
+              <h2 class="register-title">Create Your Account</h2>
+              <p class="register-subtitle">Join our inventory management platform</p>
+            </div>
+
+            <!-- Messages -->
+            {% if messages %}
+              {% for message in messages %}
+                <div class="alert alert-{{ message.tags }}">
+                  {% if message.tags == 'error' %}
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                  {% elif message.tags == 'success' %}
+                    <i class="bi bi-check-circle me-2"></i>
+                  {% else %}
+                    <i class="bi bi-info-circle me-2"></i>
+                  {% endif %}
+                  {{ message }}
+                </div>
+              {% endfor %}
+            {% endif %}
+
+            <!-- Registration Form -->
+            <form method="post" class="needs-validation" novalidate>
+              {% csrf_token %}
+              
+              <!-- Name Fields -->
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="first_name" class="form-label">
+                    First Name <span class="required">*</span>
+                  </label>
+                  <div class="input-wrapper">
+                    <input 
+                      type="text" 
+                      class="form-control {% if form.first_name.errors %}is-invalid{% endif %}" 
+                      id="first_name" 
+                      name="first_name" 
+                      placeholder="Enter your first name"
+                      value="{{ form.first_name.value|default:'' }}"
+                      required
+                      autocomplete="given-name"
+                    >
+                    <i class="bi bi-person input-icon"></i>
+                  </div>
+                  {% if form.first_name.errors %}
+                    <div class="invalid-feedback">{{ form.first_name.errors.0 }}</div>
+                  {% endif %}
+                </div>
+
+                <div class="form-group">
+                  <label for="last_name" class="form-label">
+                    Last Name <span class="required">*</span>
+                  </label>
+                  <div class="input-wrapper">
+                    <input 
+                      type="text" 
+                      class="form-control {% if form.last_name.errors %}is-invalid{% endif %}" 
+                      id="last_name" 
+                      name="last_name" 
+                      placeholder="Enter your last name"
+                      value="{{ form.last_name.value|default:'' }}"
+                      required
+                      autocomplete="family-name"
+                    >
+                    <i class="bi bi-person input-icon"></i>
+                  </div>
+                  {% if form.last_name.errors %}
+                    <div class="invalid-feedback">{{ form.last_name.errors.0 }}</div>
+                  {% endif %}
+                </div>
               </div>
-            {% endfor %}
-          {% endif %}
 
-          <form method="post">
-            {% csrf_token %}
-            
-            <div class="row">
-              <div class="col-md-6 mb-3">
-                <label class="form-label"><i class="bi bi-person"></i> First Name</label>
-                {{ form.first_name }}
-                {% if form.first_name.errors %}
-                  <div class="text-danger small">{{ form.first_name.errors.0 }}</div>
+              <!-- Username Field -->
+              <div class="form-group">
+                <label for="username" class="form-label">
+                  Username <span class="required">*</span>
+                </label>
+                <div class="input-wrapper">
+                  <input 
+                    type="text" 
+                    class="form-control {% if form.username.errors %}is-invalid{% endif %}" 
+                    id="username" 
+                    name="username" 
+                    placeholder="Choose a unique username"
+                    value="{{ form.username.value|default:'' }}"
+                    required
+                    autocomplete="username"
+                  >
+                  <i class="bi bi-at input-icon"></i>
+                </div>
+                {% if form.username.errors %}
+                  <div class="invalid-feedback">{{ form.username.errors.0 }}</div>
                 {% endif %}
               </div>
-              <div class="col-md-6 mb-3">
-                <label class="form-label"><i class="bi bi-person"></i> Last Name</label>
-                {{ form.last_name }}
-                {% if form.last_name.errors %}
-                  <div class="text-danger small">{{ form.last_name.errors.0 }}</div>
+
+              <!-- Email Field -->
+              <div class="form-group">
+                <label for="email" class="form-label">
+                  Email Address <span class="required">*</span>
+                </label>
+                <div class="input-wrapper">
+                  <input 
+                    type="email" 
+                    class="form-control {% if form.email.errors %}is-invalid{% endif %}" 
+                    id="email" 
+                    name="email" 
+                    placeholder="Enter your email address"
+                    value="{{ form.email.value|default:'' }}"
+                    required
+                    autocomplete="email"
+                  >
+                  <i class="bi bi-envelope input-icon"></i>
+                </div>
+                {% if form.email.errors %}
+                  <div class="invalid-feedback">{{ form.email.errors.0 }}</div>
                 {% endif %}
               </div>
-            </div>
 
-            <div class="mb-3">
-              <label class="form-label"><i class="bi bi-at"></i> Username</label>
-              {{ form.username }}
-              {% if form.username.errors %}
-                <div class="text-danger small">{{ form.username.errors.0 }}</div>
-              {% endif %}
-            </div>
-
-            <div class="mb-3">
-              <label class="form-label"><i class="bi bi-envelope"></i> Email Address</label>
-              {{ form.email }}
-              {% if form.email.errors %}
-                <div class="text-danger small">{{ form.email.errors.0 }}</div>
-              {% endif %}
-            </div>
-
-            <div class="mb-3">
-              <label class="form-label"><i class="bi bi-lock"></i> Password</label>
-              <div class="password-input-container">
-                {{ form.password1 }}
-                <i class="bi bi-eye password-toggle" id="togglePassword1" onclick="togglePassword('password1', 'togglePassword1')"></i>
+              <!-- Password Fields -->
+              <div class="form-group">
+                <label for="password1" class="form-label">
+                  Password <span class="required">*</span>
+                </label>
+                <div class="input-wrapper">
+                  <input 
+                    type="password" 
+                    class="form-control {% if form.password1.errors %}is-invalid{% endif %}" 
+                    id="password1" 
+                    name="password1" 
+                    placeholder="Create a strong password"
+                    required
+                    autocomplete="new-password"
+                  >
+                  <i class="bi bi-lock input-icon"></i>
+                  <button type="button" class="password-toggle" id="togglePassword1">
+                    <i class="bi bi-eye"></i>
+                  </button>
+                </div>
+                <div class="password-strength">
+                  Use at least 8 characters with a mix of letters, numbers, and symbols
+                </div>
+                {% if form.password1.errors %}
+                  <div class="invalid-feedback">{{ form.password1.errors.0 }}</div>
+                {% endif %}
               </div>
-              {% if form.password1.errors %}
-                <div class="text-danger small">{{ form.password1.errors.0 }}</div>
-              {% endif %}
-            </div>
 
-            <div class="mb-4">
-              <label class="form-label"><i class="bi bi-lock-fill"></i> Confirm Password</label>
-              <div class="password-input-container">
-                {{ form.password2 }}
-                <i class="bi bi-eye password-toggle" id="togglePassword2" onclick="togglePassword('password2', 'togglePassword2')"></i>
+              <div class="form-group">
+                <label for="password2" class="form-label">
+                  Confirm Password <span class="required">*</span>
+                </label>
+                <div class="input-wrapper">
+                  <input 
+                    type="password" 
+                    class="form-control {% if form.password2.errors %}is-invalid{% endif %}" 
+                    id="password2" 
+                    name="password2" 
+                    placeholder="Confirm your password"
+                    required
+                    autocomplete="new-password"
+                  >
+                  <i class="bi bi-lock-fill input-icon"></i>
+                  <button type="button" class="password-toggle" id="togglePassword2">
+                    <i class="bi bi-eye"></i>
+                  </button>
+                </div>
+                {% if form.password2.errors %}
+                  <div class="invalid-feedback">{{ form.password2.errors.0 }}</div>
+                {% endif %}
               </div>
-              {% if form.password2.errors %}
-                <div class="text-danger small">{{ form.password2.errors.0 }}</div>
-              {% endif %}
-            </div>
 
-            <div class="alert alert-info">
-              <i class="bi bi-info-circle"></i>
-              <strong>Note:</strong> Your account will be pending approval by an administrator before you can access the system.
-            </div>
+              <!-- Approval Notice -->
+              <div class="approval-notice">
+                <div class="approval-header">
+                  <i class="bi bi-info-circle"></i>
+                  <h6>Account Approval Required</h6>
+                </div>
+                <p class="approval-text">
+                  Your account will be reviewed by an administrator before access is granted. 
+                  User roles and permissions are assigned during the approval process.
+                </p>
+              </div>
 
-            <div class="d-grid gap-2 mb-3">
-              <button type="submit" class="btn btn-success btn-lg">
-                <i class="bi bi-person-check"></i> Create Account
+              <button type="submit" class="btn btn-primary">
+                <i class="bi bi-person-plus me-2"></i>
+                Create Account
               </button>
-            </div>
-          </form>
 
-          <div class="text-center">
-            <p class="mb-0">Already have an account?</p>
-            <a href="{% url 'users:login' %}" class="btn btn-outline-primary btn-sm">
-              <i class="bi bi-box-arrow-in-right"></i> Sign In
-            </a>
+              <div class="form-footer">
+                <p class="mb-0 text-muted">Already have an account?</p>
+                <a href="{% url 'users:login' %}" class="login-link">
+                  <i class="bi bi-box-arrow-in-right me-1"></i>
+                  Sign in to your dashboard
+                </a>
+              </div>
+            </form>
           </div>
         </div>
       </div>
     </div>
   </div>
 
+  <!-- Bootstrap JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  
+  <!-- Custom JavaScript -->
   <script>
-    function togglePassword(fieldId, iconId) {
-      const passwordField = document.getElementById(fieldId);
-      const toggleIcon = document.getElementById(iconId);
+    // Password visibility toggles
+    document.getElementById('togglePassword1').addEventListener('click', function() {
+      const password = document.getElementById('password1');
+      const icon = this.querySelector('i');
       
-      if (passwordField.type === "password") {
-        passwordField.type = "text";
-        toggleIcon.classList.remove("bi-eye");
-        toggleIcon.classList.add("bi-eye-slash");
+      if (password.type === 'password') {
+        password.type = 'text';
+        icon.classList.remove('bi-eye');
+        icon.classList.add('bi-eye-slash');
       } else {
-        passwordField.type = "password";
-        toggleIcon.classList.remove("bi-eye-slash");
-        toggleIcon.classList.add("bi-eye");
+        password.type = 'password';
+        icon.classList.remove('bi-eye-slash');
+        icon.classList.add('bi-eye');
       }
-    }
+    });
+
+    document.getElementById('togglePassword2').addEventListener('click', function() {
+      const password = document.getElementById('password2');
+      const icon = this.querySelector('i');
+      
+      if (password.type === 'password') {
+        password.type = 'text';
+        icon.classList.remove('bi-eye');
+        icon.classList.add('bi-eye-slash');
+      } else {
+        password.type = 'password';
+        icon.classList.remove('bi-eye-slash');
+        icon.classList.add('bi-eye');
+      }
+    });
+
+    // Form validation
+    (function() {
+      'use strict';
+      window.addEventListener('load', function() {
+        const forms = document.getElementsByClassName('needs-validation');
+        Array.prototype.filter.call(forms, function(form) {
+          form.addEventListener('submit', function(event) {
+            if (form.checkValidity() === false) {
+              event.preventDefault();
+              event.stopPropagation();
+            }
+            form.classList.add('was-validated');
+          }, false);
+        });
+      }, false);
+    })();
+
+    // Real-time password confirmation validation
+    document.getElementById('password2').addEventListener('input', function() {
+      const password1 = document.getElementById('password1').value;
+      const password2 = this.value;
+      
+      if (password2 && password1 !== password2) {
+        this.classList.add('is-invalid');
+        this.classList.remove('is-valid');
+      } else if (password2 && password1 === password2) {
+        this.classList.remove('is-invalid');
+        this.classList.add('is-valid');
+      } else {
+        this.classList.remove('is-invalid', 'is-valid');
+      }
+    });
+
+    // Email validation
+    document.getElementById('email').addEventListener('blur', function() {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (this.value && !emailRegex.test(this.value)) {
+        this.classList.add('is-invalid');
+        this.classList.remove('is-valid');
+      } else if (this.value) {
+        this.classList.remove('is-invalid');
+        this.classList.add('is-valid');
+      }
+    });
   </script>
 </body>
 </html>
