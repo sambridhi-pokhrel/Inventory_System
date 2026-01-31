@@ -258,6 +258,8 @@ body::before {
     box-shadow: var(--card-shadow);
     border-bottom: 1px solid var(--border-light);
     backdrop-filter: blur(10px);
+    position: relative;
+    z-index: 1030;
 }
 
 .navbar-brand {
@@ -278,6 +280,31 @@ body::before {
 .nav-link.active {
     color: var(--primary-color) !important;
     font-weight: 600;
+}
+
+/* Dropdown Menu Fixes */
+.dropdown-menu {
+    z-index: 1050 !important;
+    border: 1px solid var(--border-color) !important;
+    box-shadow: var(--card-shadow-hover) !important;
+    border-radius: var(--border-radius-sm) !important;
+    background: var(--card-background) !important;
+    min-width: 160px !important;
+}
+
+.dropdown-item {
+    color: var(--text-secondary) !important;
+    padding: 0.5rem 1rem !important;
+    transition: var(--transition-fast) !important;
+}
+
+.dropdown-item:hover {
+    background: rgba(113, 75, 103, 0.1) !important;
+    color: var(--primary-color) !important;
+}
+
+.dropdown-toggle::after {
+    margin-left: 0.5rem !important;
 }
 
 /* Table Styles */

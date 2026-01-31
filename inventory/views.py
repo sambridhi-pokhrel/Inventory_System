@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
-from django.db.models import Q, Sum, F
+from django.db.models import Q, Sum, F, Count
 from django.contrib import messages
 from django.http import HttpResponse, JsonResponse
 from django.core.paginator import Paginator
@@ -8,6 +8,7 @@ from django.utils import timezone
 from datetime import datetime, timedelta
 import csv
 import io
+import uuid
 from .models import Item, Transaction
 from .forms import TransactionForm, TransactionFilterForm
 from users.decorators import (
@@ -21,7 +22,7 @@ from users.utils import UserRoleManager
 
 @approved_user_required
 def item_list(request):
-    """List all inventory items with search and filter functionality"""
+    """List all inventory items with search, filter, and reorder suggestions"""
     items = Item.objects.all()
     
     # Handle search
@@ -32,19 +33,34 @@ def item_list(request):
         )
     
     # Handle filter
-    filter_type = request.GET.get('filter', '')
-    if filter_type == 'low_stock':
-        items = items.filter(quantity__lte=10)
-    elif filter_type == 'out_of_stock':
+    filter_type = request.GET.get('status', '')
+    if filter_type == 'low-stock':
+        items = items.filter(quantity__lte=F('reorder_level'))
+    elif filter_type == 'out-of-stock':
         items = items.filter(quantity=0)
-    elif filter_type == 'in_stock':
-        items = items.filter(quantity__gt=10)
+    elif filter_type == 'in-stock':
+        items = items.filter(quantity__gt=F('reorder_level'))
+    elif filter_type == 'reorder-suggested':
+        # Filter items that need reordering based on predictive logic
+        reorder_items = []
+        for item in items:
+            if item.needs_reorder:
+                reorder_items.append(item.id)
+        items = items.filter(id__in=reorder_items)
 
     # Calculate summary statistics
     total_items = Item.objects.count()
-    low_stock_count = Item.objects.filter(quantity__lte=10, quantity__gt=0).count()
+    low_stock_count = Item.objects.filter(quantity__lte=F('reorder_level'), quantity__gt=0).count()
     out_of_stock_count = Item.objects.filter(quantity=0).count()
-    in_stock_count = Item.objects.filter(quantity__gt=10).count()
+    in_stock_count = Item.objects.filter(quantity__gt=F('reorder_level')).count()
+    
+    # Calculate reorder suggestions
+    reorder_suggestions = []
+    for item in Item.objects.all():
+        if item.needs_reorder:
+            reorder_suggestions.append(item)
+    
+    reorder_count = len(reorder_suggestions)
 
     # Get role context using utility
     context = UserRoleManager.get_context_for_user(request.user)
@@ -56,182 +72,131 @@ def item_list(request):
         "low_stock_count": low_stock_count,
         "out_of_stock_count": out_of_stock_count,
         "in_stock_count": in_stock_count,
+        "reorder_count": reorder_count,
+        "reorder_suggestions": reorder_suggestions[:5],  # Show top 5 in sidebar
     })
 
     return render(request, "inventory/list.html", context)
 
 
+@approved_user_required
+def reorder_suggestions(request):
+    """View all reorder suggestions with predictive analytics"""
+    items = Item.objects.all()
+    suggestions = []
+    
+    for item in items:
+        if item.needs_reorder:
+            daily_usage = item.get_average_daily_usage()
+            predicted_needed = item.get_predicted_stock_needed()
+            suggestions.append({
+                'item': item,
+                'daily_usage': daily_usage,
+                'predicted_needed': predicted_needed,
+                'days_until_stockout': item.quantity / daily_usage if daily_usage > 0 else float('inf'),
+                'suggested_quantity': item.suggested_reorder_quantity,
+            })
+    
+    # Sort by urgency (days until stockout)
+    suggestions.sort(key=lambda x: x['days_until_stockout'])
+    
+    context = UserRoleManager.get_context_for_user(request.user)
+    context.update({
+        'suggestions': suggestions,
+        'total_suggestions': len(suggestions),
+    })
+    
+    return render(request, 'inventory/reorder_suggestions.html', context)
+
+
 @manager_or_admin_required
 def export_csv(request):
-    """Export inventory data to CSV - Manager and Admin only"""
+    """Export inventory data to CSV with reorder information"""
     response = HttpResponse(content_type='text/csv')
     response['Content-Disposition'] = 'attachment; filename="inventory_report.csv"'
     
     writer = csv.writer(response)
     
     # Write header
-    writer.writerow(['Item Name', 'Quantity', 'Price ($)', 'Total Value ($)', 'Stock Status'])
+    writer.writerow([
+        'Item Name', 'Quantity', 'Price (Rs.)', 'Total Value (Rs.)', 
+        'Stock Status', 'Reorder Level', 'Lead Time (Days)', 
+        'Daily Usage', 'Reorder Suggested', 'Suggested Quantity'
+    ])
     
     # Write data
     for item in Item.objects.all():
         total_value = float(item.price) * item.quantity
+        daily_usage = item.get_average_daily_usage()
         writer.writerow([
             item.name,
             item.quantity,
             f"{item.price:.2f}",
             f"{total_value:.2f}",
-            item.stock_status.replace('-', ' ').title()
+            item.stock_status.replace('-', ' ').title(),
+            item.reorder_level,
+            item.lead_time_days,
+            f"{daily_usage:.2f}",
+            'Yes' if item.needs_reorder else 'No',
+            item.suggested_reorder_quantity if item.needs_reorder else 0,
         ])
     
     # Write summary
     writer.writerow([])  # Empty row
     writer.writerow(['SUMMARY'])
     writer.writerow(['Total Items', Item.objects.count()])
-    writer.writerow(['In Stock Items', Item.objects.filter(quantity__gt=10).count()])
-    writer.writerow(['Low Stock Items', Item.objects.filter(quantity__lte=10, quantity__gt=0).count()])
+    writer.writerow(['In Stock Items', Item.objects.filter(quantity__gt=F('reorder_level')).count()])
+    writer.writerow(['Low Stock Items', Item.objects.filter(quantity__lte=F('reorder_level'), quantity__gt=0).count()])
     writer.writerow(['Out of Stock Items', Item.objects.filter(quantity=0).count()])
+    
+    # Calculate reorder suggestions
+    reorder_count = sum(1 for item in Item.objects.all() if item.needs_reorder)
+    writer.writerow(['Items Needing Reorder', reorder_count])
     
     # Calculate total inventory value
     total_value = sum(float(item.price) * item.quantity for item in Item.objects.all())
-    writer.writerow(['Total Inventory Value ($)', f"{total_value:.2f}"])
+    writer.writerow(['Total Inventory Value (Rs.)', f"{total_value:.2f}"])
     
-    return response
-
-
-@manager_or_admin_required
-def export_pdf(request):
-    """Export inventory data to PDF - Manager and Admin only"""
-    response = HttpResponse(content_type='application/pdf')
-    response['Content-Disposition'] = 'attachment; filename="inventory_report.pdf"'
-    
-    # Create PDF document
-    buffer = io.BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=A4)
-    
-    # Get styles
-    styles = getSampleStyleSheet()
-    title_style = ParagraphStyle(
-        'CustomTitle',
-        parent=styles['Heading1'],
-        fontSize=24,
-        spaceAfter=30,
-        alignment=1,  # Center alignment
-        textColor=colors.darkblue
-    )
-    
-    # Build content
-    content = []
-    
-    # Title
-    title = Paragraph("Inventory Management Report", title_style)
-    content.append(title)
-    content.append(Spacer(1, 20))
-    
-    # Summary section
-    summary_data = [
-        ['Summary', ''],
-        ['Total Items', str(Item.objects.count())],
-        ['In Stock Items', str(Item.objects.filter(quantity__gt=10).count())],
-        ['Low Stock Items', str(Item.objects.filter(quantity__lte=10, quantity__gt=0).count())],
-        ['Out of Stock Items', str(Item.objects.filter(quantity=0).count())],
-    ]
-    
-    # Calculate total value
-    total_value = sum(float(item.price) * item.quantity for item in Item.objects.all())
-    summary_data.append(['Total Inventory Value', f"${total_value:.2f}"])
-    
-    summary_table = Table(summary_data, colWidths=[3*inch, 2*inch])
-    summary_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.darkblue),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 14),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-        ('GRID', (0, 0), (-1, -1), 1, colors.black)
-    ]))
-    
-    content.append(summary_table)
-    content.append(Spacer(1, 30))
-    
-    # Detailed inventory table
-    detail_title = Paragraph("Detailed Inventory", styles['Heading2'])
-    content.append(detail_title)
-    content.append(Spacer(1, 12))
-    
-    # Prepare data for detailed table
-    data = [['Item Name', 'Quantity', 'Price ($)', 'Total Value ($)', 'Status']]
-    
-    for item in Item.objects.all():
-        total_value = float(item.price) * item.quantity
-        status = item.stock_status.replace('-', ' ').title()
-        data.append([
-            item.name,
-            str(item.quantity),
-            f"{item.price:.2f}",
-            f"{total_value:.2f}",
-            status
-        ])
-    
-    # Create table
-    table = Table(data, colWidths=[2.5*inch, 1*inch, 1*inch, 1.2*inch, 1.3*inch])
-    table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.darkblue),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 12),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-        ('GRID', (0, 0), (-1, -1), 1, colors.black),
-        ('FONTSIZE', (0, 1), (-1, -1), 10),
-    ]))
-    
-    content.append(table)
-    
-    # Build PDF
-    doc.build(content)
-    
-    # Get PDF data
-    pdf_data = buffer.getvalue()
-    buffer.close()
-    
-    response.write(pdf_data)
     return response
 
 
 @manager_or_admin_required
 def item_add(request):
-    """Add new inventory item - Manager and Admin only"""
+    """Add new inventory item with reorder settings"""
     if request.method == "POST":
         name = request.POST.get("name")
         quantity = request.POST.get("quantity")
         price = request.POST.get("price")
+        reorder_level = request.POST.get("reorder_level", 10)
+        lead_time_days = request.POST.get("lead_time_days", 7)
 
         # Validate input
         if not all([name, quantity, price]):
-            messages.error(request, "All fields are required.")
+            messages.error(request, "Name, quantity, and price are required.")
             return render(request, "inventory/add.html")
 
         try:
             quantity = int(quantity)
             price = float(price)
+            reorder_level = int(reorder_level)
+            lead_time_days = int(lead_time_days)
             
-            if quantity < 0 or price < 0:
-                messages.error(request, "Quantity and price must be non-negative.")
+            if quantity < 0 or price < 0 or reorder_level < 0 or lead_time_days < 1:
+                messages.error(request, "All values must be non-negative (lead time must be at least 1 day).")
                 return render(request, "inventory/add.html")
             
             Item.objects.create(
                 name=name,
                 quantity=quantity,
-                price=price
+                price=price,
+                reorder_level=reorder_level,
+                lead_time_days=lead_time_days
             )
             messages.success(request, f"Item '{name}' has been added successfully.")
             return redirect("inventory:item_list")
             
         except (ValueError, TypeError):
-            messages.error(request, "Please enter valid numbers for quantity and price.")
+            messages.error(request, "Please enter valid numbers for all fields.")
             return render(request, "inventory/add.html")
 
     context = UserRoleManager.get_context_for_user(request.user)
@@ -240,16 +205,18 @@ def item_add(request):
 
 @manager_or_admin_required
 def item_edit(request, item_id):
-    """Edit inventory item - Manager and Admin only"""
+    """Edit inventory item with reorder settings"""
     item = get_object_or_404(Item, id=item_id)
 
     if request.method == "POST":
         name = request.POST.get("name")
         quantity = request.POST.get("quantity")
         price = request.POST.get("price")
+        reorder_level = request.POST.get("reorder_level")
+        lead_time_days = request.POST.get("lead_time_days")
 
         # Validate input
-        if not all([name, quantity, price]):
+        if not all([name, quantity, price, reorder_level, lead_time_days]):
             messages.error(request, "All fields are required.")
             context = UserRoleManager.get_context_for_user(request.user)
             context["item"] = item
@@ -258,9 +225,11 @@ def item_edit(request, item_id):
         try:
             quantity = int(quantity)
             price = float(price)
+            reorder_level = int(reorder_level)
+            lead_time_days = int(lead_time_days)
             
-            if quantity < 0 or price < 0:
-                messages.error(request, "Quantity and price must be non-negative.")
+            if quantity < 0 or price < 0 or reorder_level < 0 or lead_time_days < 1:
+                messages.error(request, "All values must be non-negative (lead time must be at least 1 day).")
                 context = UserRoleManager.get_context_for_user(request.user)
                 context["item"] = item
                 return render(request, "inventory/edit.html", context)
@@ -268,13 +237,15 @@ def item_edit(request, item_id):
             item.name = name
             item.quantity = quantity
             item.price = price
+            item.reorder_level = reorder_level
+            item.lead_time_days = lead_time_days
             item.save()
             
             messages.success(request, f"Item '{name}' has been updated successfully.")
             return redirect("inventory:item_list")
             
         except (ValueError, TypeError):
-            messages.error(request, "Please enter valid numbers for quantity and price.")
+            messages.error(request, "Please enter valid numbers for all fields.")
             context = UserRoleManager.get_context_for_user(request.user)
             context["item"] = item
             return render(request, "inventory/edit.html", context)
@@ -300,56 +271,67 @@ def item_delete(request, item_id):
 
 @approved_user_required
 def transaction_list(request):
-    """List all transactions with filtering and pagination"""
+    """List all transactions with filtering, pagination, and payment status"""
     transactions = Transaction.objects.select_related('item', 'performed_by').all()
     
     # Handle filtering
-    filter_form = TransactionFilterForm(request.GET)
-    if filter_form.is_valid():
-        if filter_form.cleaned_data['transaction_type']:
-            transactions = transactions.filter(
-                transaction_type=filter_form.cleaned_data['transaction_type']
-            )
-        
-        if filter_form.cleaned_data['item']:
-            transactions = transactions.filter(
-                item=filter_form.cleaned_data['item']
-            )
-        
-        if filter_form.cleaned_data['date_from']:
-            transactions = transactions.filter(
-                timestamp__date__gte=filter_form.cleaned_data['date_from']
-            )
-        
-        if filter_form.cleaned_data['date_to']:
-            transactions = transactions.filter(
-                timestamp__date__lte=filter_form.cleaned_data['date_to']
-            )
+    transaction_type = request.GET.get('type', '')
+    payment_status = request.GET.get('payment_status', '')
+    date_from = request.GET.get('date_from', '')
+    date_to = request.GET.get('date_to', '')
+    
+    if transaction_type:
+        transactions = transactions.filter(transaction_type=transaction_type)
+    
+    if payment_status:
+        transactions = transactions.filter(payment_status=payment_status)
+    
+    if date_from:
+        try:
+            date_from_obj = datetime.strptime(date_from, '%Y-%m-%d').date()
+            transactions = transactions.filter(timestamp__date__gte=date_from_obj)
+        except ValueError:
+            pass
+    
+    if date_to:
+        try:
+            date_to_obj = datetime.strptime(date_to, '%Y-%m-%d').date()
+            transactions = transactions.filter(timestamp__date__lte=date_to_obj)
+        except ValueError:
+            pass
     
     # Pagination
-    paginator = Paginator(transactions, 20)  # Show 20 transactions per page
+    paginator = Paginator(transactions, 20)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
     
     # Calculate summary statistics
-    total_sales = Transaction.objects.filter(transaction_type='SALE').aggregate(
-        total=Sum('total_amount')
-    )['total'] or 0
+    total_sales = Transaction.objects.filter(
+        transaction_type='SALE', 
+        payment_status='PAID'
+    ).aggregate(total=Sum('total_amount'))['total'] or 0
     
-    total_purchases = Transaction.objects.filter(transaction_type='PURCHASE').aggregate(
-        total=Sum('total_amount')
-    )['total'] or 0
+    total_purchases = Transaction.objects.filter(
+        transaction_type='PURCHASE'
+    ).aggregate(total=Sum('total_amount'))['total'] or 0
     
-    recent_transactions = Transaction.objects.select_related('item', 'performed_by')[:5]
+    pending_payments = Transaction.objects.filter(
+        payment_status='PENDING'
+    ).aggregate(total=Sum('total_amount'))['total'] or 0
     
     context = UserRoleManager.get_context_for_user(request.user)
     context.update({
-        'page_obj': page_obj,
-        'filter_form': filter_form,
+        'transactions': page_obj,
         'total_sales': total_sales,
         'total_purchases': total_purchases,
-        'recent_transactions': recent_transactions,
+        'pending_payments': pending_payments,
         'transaction_count': transactions.count(),
+        'filters': {
+            'type': transaction_type,
+            'payment_status': payment_status,
+            'date_from': date_from,
+            'date_to': date_to,
+        }
     })
     
     return render(request, 'inventory/transaction_list.html', context)
@@ -357,32 +339,56 @@ def transaction_list(request):
 
 @manager_or_admin_required
 def transaction_create(request):
-    """Create new transaction - Manager and Admin only"""
+    """Create new transaction with payment processing"""
     if request.method == 'POST':
-        form = TransactionForm(request.POST)
-        if form.is_valid():
-            try:
-                transaction = form.save(commit=False)
-                transaction.performed_by = request.user
+        item_id = request.POST.get('item')
+        transaction_type = request.POST.get('transaction_type')
+        quantity = request.POST.get('quantity')
+        unit_price = request.POST.get('unit_price')
+        payment_method = request.POST.get('payment_method', 'KHALTI')
+        notes = request.POST.get('notes', '')
+        
+        try:
+            item = Item.objects.get(id=item_id)
+            quantity = int(quantity)
+            unit_price = float(unit_price)
+            
+            # Create transaction
+            transaction = Transaction.objects.create(
+                item=item,
+                transaction_type=transaction_type,
+                quantity=quantity,
+                unit_price=unit_price,
+                payment_method=payment_method,
+                performed_by=request.user,
+                notes=notes,
+                payment_status='PENDING'
+            )
+            
+            # Simulate payment processing
+            if payment_method == 'KHALTI':
+                success = transaction.simulate_khalti_payment()
+                if success:
+                    messages.success(
+                        request,
+                        f"Transaction completed successfully! Payment processed via Khalti. "
+                        f"Reference: {transaction.payment_reference}"
+                    )
+                else:
+                    messages.warning(request, "Transaction created but payment processing failed.")
+            else:
+                # For other payment methods, mark as paid immediately
+                transaction.payment_status = 'PAID'
                 transaction.save()
-                
-                messages.success(
-                    request, 
-                    f"{transaction.transaction_type.title()} transaction for {transaction.item.name} "
-                    f"(Qty: {transaction.quantity}) completed successfully."
-                )
-                return redirect('inventory:transaction_list')
-                
-            except Exception as e:
-                messages.error(request, f"Error creating transaction: {str(e)}")
-        else:
-            messages.error(request, "Please correct the errors below.")
-    else:
-        form = TransactionForm()
+                messages.success(request, f"Transaction completed successfully via {payment_method}!")
+            
+            return redirect('inventory:transaction_list')
+            
+        except Exception as e:
+            messages.error(request, f"Error creating transaction: {str(e)}")
     
     context = UserRoleManager.get_context_for_user(request.user)
     context.update({
-        'form': form,
         'items': Item.objects.all().order_by('name'),
     })
     
@@ -391,7 +397,7 @@ def transaction_create(request):
 
 @approved_user_required
 def transaction_detail(request, transaction_id):
-    """View transaction details"""
+    """View transaction details with payment information"""
     transaction = get_object_or_404(
         Transaction.objects.select_related('item', 'performed_by'),
         id=transaction_id
@@ -404,8 +410,33 @@ def transaction_detail(request, transaction_id):
 
 
 @manager_or_admin_required
+def process_payment(request, transaction_id):
+    """Process payment for pending transactions"""
+    transaction = get_object_or_404(Transaction, id=transaction_id)
+    
+    if transaction.payment_status == 'PENDING':
+        if transaction.payment_method == 'KHALTI':
+            success = transaction.simulate_khalti_payment()
+            if success:
+                messages.success(
+                    request,
+                    f"Payment processed successfully! Reference: {transaction.payment_reference}"
+                )
+            else:
+                messages.error(request, "Payment processing failed.")
+        else:
+            transaction.payment_status = 'PAID'
+            transaction.save()
+            messages.success(request, "Payment marked as completed.")
+    else:
+        messages.info(request, "Transaction payment is already processed.")
+    
+    return redirect('inventory:transaction_detail', transaction_id=transaction_id)
+
+
+@manager_or_admin_required
 def get_item_price(request):
-    """AJAX endpoint to get item price for transaction form"""
+    """AJAX endpoint to get item price and stock info for transaction form"""
     item_id = request.GET.get('item_id')
     if item_id:
         try:
@@ -413,7 +444,9 @@ def get_item_price(request):
             return JsonResponse({
                 'price': str(item.price),
                 'quantity': item.quantity,
-                'name': item.name
+                'name': item.name,
+                'stock_status': item.stock_status,
+                'needs_reorder': item.needs_reorder,
             })
         except Item.DoesNotExist:
             pass
@@ -423,7 +456,7 @@ def get_item_price(request):
 
 @manager_or_admin_required
 def transaction_export_csv(request):
-    """Export transaction data to CSV - Manager and Admin only"""
+    """Export transaction data to CSV with payment information"""
     response = HttpResponse(content_type='text/csv')
     response['Content-Disposition'] = 'attachment; filename="transactions_report.csv"'
     
@@ -432,7 +465,8 @@ def transaction_export_csv(request):
     # Write header
     writer.writerow([
         'Date', 'Time', 'Item', 'Type', 'Quantity', 
-        'Unit Price ($)', 'Total Amount ($)', 'Performed By', 'Notes'
+        'Unit Price (Rs.)', 'Total Amount (Rs.)', 'Payment Status',
+        'Payment Method', 'Payment Reference', 'Performed By', 'Notes'
     ])
     
     # Write transaction data
@@ -445,25 +479,34 @@ def transaction_export_csv(request):
             transaction.quantity,
             f"{transaction.unit_price:.2f}",
             f"{transaction.total_amount:.2f}",
+            transaction.payment_status,
+            transaction.payment_method,
+            transaction.payment_reference or '',
             transaction.performed_by.get_full_name() or transaction.performed_by.username,
             transaction.notes or ''
         ])
     
     # Write summary
-    writer.writerow([])  # Empty row
+    writer.writerow([])
     writer.writerow(['SUMMARY'])
     
-    total_sales = Transaction.objects.filter(transaction_type='SALE').aggregate(
-        total=Sum('total_amount')
-    )['total'] or 0
+    total_sales = Transaction.objects.filter(
+        transaction_type='SALE', 
+        payment_status='PAID'
+    ).aggregate(total=Sum('total_amount'))['total'] or 0
     
-    total_purchases = Transaction.objects.filter(transaction_type='PURCHASE').aggregate(
-        total=Sum('total_amount')
-    )['total'] or 0
+    total_purchases = Transaction.objects.filter(
+        transaction_type='PURCHASE'
+    ).aggregate(total=Sum('total_amount'))['total'] or 0
     
-    writer.writerow(['Total Sales ($)', f"{total_sales:.2f}"])
-    writer.writerow(['Total Purchases ($)', f"{total_purchases:.2f}"])
-    writer.writerow(['Net Amount ($)', f"{total_sales - total_purchases:.2f}"])
+    pending_amount = Transaction.objects.filter(
+        payment_status='PENDING'
+    ).aggregate(total=Sum('total_amount'))['total'] or 0
+    
+    writer.writerow(['Total Sales (Rs.)', f"{total_sales:.2f}"])
+    writer.writerow(['Total Purchases (Rs.)', f"{total_purchases:.2f}"])
+    writer.writerow(['Pending Payments (Rs.)', f"{pending_amount:.2f}"])
+    writer.writerow(['Net Amount (Rs.)', f"{total_sales - total_purchases:.2f}"])
     writer.writerow(['Total Transactions', Transaction.objects.count()])
     
     return response

@@ -73,6 +73,25 @@
                                    value="{{ item.price }}" step="0.01" min="0" required>
                         </div>
 
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="reorder_level" class="form-label">
+                                    <i class="bi bi-exclamation-triangle me-1"></i> Reorder Level
+                                </label>
+                                <input type="number" class="form-control" id="reorder_level" name="reorder_level" 
+                                       value="{{ item.reorder_level }}" min="0" required>
+                                <small class="text-muted">Minimum stock before reorder alert</small>
+                            </div>
+                            <div class="col-md-6 mb-4">
+                                <label for="lead_time_days" class="form-label">
+                                    <i class="bi bi-calendar me-1"></i> Lead Time (Days)
+                                </label>
+                                <input type="number" class="form-control" id="lead_time_days" name="lead_time_days" 
+                                       value="{{ item.lead_time_days }}" min="1" required>
+                                <small class="text-muted">Days required to restock this item</small>
+                            </div>
+                        </div>
+
                         <div class="d-grid gap-2">
                             <button type="submit" class="btn btn-primary btn-lg">
                                 <i class="bi bi-check-circle me-1"></i> Update Item

@@ -46,15 +46,15 @@
                     {% endif %}
                 </ul>
                 <ul class="navbar-nav">
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
+                    <li class="nav-item">
+                        <span class="nav-link">
                             <i class="bi bi-person-circle me-1"></i>{{ user.first_name|default:user.username }}
+                        </span>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'users:logout' %}">
+                            <i class="bi bi-box-arrow-right me-1"></i>Logout
                         </a>
-                        <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="{% url 'users:logout' %}">
-                                <i class="bi bi-box-arrow-right me-2"></i>Logout
-                            </a></li>
-                        </ul>
                     </li>
                 </ul>
             </div>
@@ -118,63 +118,54 @@
                             <div class="row">
                                 <!-- Transaction Type -->
                                 <div class="col-md-6 mb-3">
-                                    <label for="{{ form.transaction_type.id_for_label }}" class="form-label fw-bold">
+                                    <label for="transaction_type" class="form-label fw-bold">
                                         <i class="bi bi-arrow-up-down me-2 text-primary"></i>
                                         Transaction Type
                                     </label>
-                                    {{ form.transaction_type }}
-                                    {% if form.transaction_type.errors %}
-                                        <div class="invalid-feedback d-block">
-                                            {{ form.transaction_type.errors.0 }}
-                                        </div>
-                                    {% endif %}
+                                    <select class="form-select" id="transaction_type" name="transaction_type" required>
+                                        <option value="">Select Type</option>
+                                        <option value="SALE">Sale</option>
+                                        <option value="PURCHASE">Purchase</option>
+                                    </select>
                                 </div>
 
                                 <!-- Item Selection -->
                                 <div class="col-md-6 mb-3">
-                                    <label for="{{ form.item.id_for_label }}" class="form-label fw-bold">
+                                    <label for="item" class="form-label fw-bold">
                                         <i class="bi bi-box me-2 text-primary"></i>
                                         Item
                                     </label>
-                                    {{ form.item }}
-                                    {% if form.item.errors %}
-                                        <div class="invalid-feedback d-block">
-                                            {{ form.item.errors.0 }}
-                                        </div>
-                                    {% endif %}
+                                    <select class="form-select" id="item" name="item" required>
+                                        <option value="">Select Item</option>
+                                        {% for item in items %}
+                                            <option value="{{ item.id }}">{{ item.name }} (Stock: {{ item.quantity }})</option>
+                                        {% endfor %}
+                                    </select>
                                 </div>
                             </div>
 
                             <div class="row">
                                 <!-- Quantity -->
                                 <div class="col-md-4 mb-3">
-                                    <label for="{{ form.quantity.id_for_label }}" class="form-label fw-bold">
+                                    <label for="quantity" class="form-label fw-bold">
                                         <i class="bi bi-hash me-2 text-primary"></i>
                                         Quantity
                                     </label>
-                                    {{ form.quantity }}
-                                    {% if form.quantity.errors %}
-                                        <div class="invalid-feedback d-block">
-                                            {{ form.quantity.errors.0 }}
-                                        </div>
-                                    {% endif %}
+                                    <input type="number" class="form-control" id="quantity" name="quantity" 
+                                           min="1" step="1" required>
                                 </div>
 
                                 <!-- Unit Price -->
                                 <div class="col-md-4 mb-3">
-                                    <label for="{{ form.unit_price.id_for_label }}" class="form-label fw-bold">
-                                        <i class="bi bi-currency-dollar me-2 text-primary"></i>
+                                    <label for="unit_price" class="form-label fw-bold">
+                                        <i class="bi bi-currency-rupee me-2 text-primary"></i>
                                         Unit Price
                                     </label>
                                     <div class="input-group">
                                         <span class="input-group-text">Rs.</span>
-                                        {{ form.unit_price }}
+                                        <input type="number" class="form-control" id="unit_price" name="unit_price" 
+                                               min="0" step="0.01" required>
                                     </div>
-                                    {% if form.unit_price.errors %}
-                                        <div class="invalid-feedback d-block">
-                                            {{ form.unit_price.errors.0 }}
-                                        </div>
-                                    {% endif %}
                                 </div>
 
                                 <!-- Total Amount (Auto-calculated) -->
@@ -192,18 +183,39 @@
                                 </div>
                             </div>
 
+                            <!-- Payment Information -->
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="payment_method" class="form-label fw-bold">
+                                        <i class="bi bi-credit-card me-2 text-primary"></i>
+                                        Payment Method
+                                    </label>
+                                    <select class="form-select" id="payment_method" name="payment_method" required>
+                                        <option value="KHALTI">Khalti (Digital Wallet)</option>
+                                        <option value="CASH">Cash</option>
+                                        <option value="BANK_TRANSFER">Bank Transfer</option>
+                                        <option value="CREDIT">Credit</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <div class="alert alert-info mb-0">
+                                        <i class="bi bi-info-circle me-2"></i>
+                                        <strong>Payment Processing:</strong>
+                                        <div id="payment-info">
+                                            <small>Khalti payments are processed automatically</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                             <!-- Notes -->
                             <div class="mb-4">
-                                <label for="{{ form.notes.id_for_label }}" class="form-label fw-bold">
+                                <label for="notes" class="form-label fw-bold">
                                     <i class="bi bi-chat-text me-2 text-primary"></i>
                                     Notes (Optional)
                                 </label>
-                                {{ form.notes }}
-                                {% if form.notes.errors %}
-                                    <div class="invalid-feedback d-block">
-                                        {{ form.notes.errors.0 }}
-                                    </div>
-                                {% endif %}
+                                <textarea class="form-control" id="notes" name="notes" rows="3" 
+                                          placeholder="Add any additional information about this transaction"></textarea>
                                 <small class="text-muted">Add any additional information about this transaction</small>
                             </div>
 
@@ -211,6 +223,10 @@
                             <div class="alert alert-info" id="stockInfo" style="display: none;">
                                 <i class="bi bi-info-circle me-2"></i>
                                 <strong>Current Stock:</strong> <span id="currentStock">-</span> units
+                                <div id="reorderInfo" class="mt-2" style="display: none;">
+                                    <i class="bi bi-arrow-repeat me-2 text-warning"></i>
+                                    <strong>Reorder Suggested:</strong> <span id="reorderQuantity">-</span> units
+                                </div>
                                 <div id="stockWarning" class="mt-2" style="display: none;">
                                     <i class="bi bi-exclamation-triangle me-2"></i>
                                     <strong>Warning:</strong> This sale will result in insufficient stock!
@@ -266,29 +282,40 @@
     <script>
         // Auto-calculate total amount
         function calculateTotal() {
-            const quantity = parseFloat(document.getElementById('{{ form.quantity.id_for_label }}').value) || 0;
-            const unitPrice = parseFloat(document.getElementById('{{ form.unit_price.id_for_label }}').value) || 0;
+            const quantity = parseFloat(document.getElementById('quantity').value) || 0;
+            const unitPrice = parseFloat(document.getElementById('unit_price').value) || 0;
             const total = quantity * unitPrice;
             document.getElementById('totalAmount').value = total.toFixed(2);
         }
 
         // Update stock information when item is selected
         function updateStockInfo() {
-            const itemSelect = document.getElementById('{{ form.item.id_for_label }}');
+            const itemSelect = document.getElementById('item');
             const selectedOption = itemSelect.options[itemSelect.selectedIndex];
             const stockInfo = document.getElementById('stockInfo');
             const currentStock = document.getElementById('currentStock');
-            const stockWarning = document.getElementById('stockWarning');
+            const reorderInfo = document.getElementById('reorderInfo');
+            const reorderQuantity = document.getElementById('reorderQuantity');
             
             if (selectedOption.value) {
-                // Get item price via AJAX
+                // Get item info via AJAX
                 fetch(`/inventory/api/item-price/?item_id=${selectedOption.value}`)
                     .then(response => response.json())
                     .then(data => {
-                        if (data.success) {
+                        if (!data.error) {
                             currentStock.textContent = data.quantity;
-                            document.getElementById('{{ form.unit_price.id_for_label }}').value = data.price;
+                            document.getElementById('unit_price').value = data.price;
                             stockInfo.style.display = 'block';
+                            
+                            // Show reorder info if needed
+                            if (data.needs_reorder) {
+                                reorderInfo.style.display = 'block';
+                                // Calculate suggested reorder (this would come from backend)
+                                reorderQuantity.textContent = Math.max(50, data.quantity * 0.5);
+                            } else {
+                                reorderInfo.style.display = 'none';
+                            }
+                            
                             calculateTotal();
                             checkStockWarning();
                         }
@@ -301,8 +328,8 @@
 
         // Check if sale quantity exceeds available stock
         function checkStockWarning() {
-            const transactionType = document.getElementById('{{ form.transaction_type.id_for_label }}').value;
-            const quantity = parseFloat(document.getElementById('{{ form.quantity.id_for_label }}').value) || 0;
+            const transactionType = document.getElementById('transaction_type').value;
+            const quantity = parseFloat(document.getElementById('quantity').value) || 0;
             const currentStockText = document.getElementById('currentStock').textContent;
             const currentStockValue = parseFloat(currentStockText) || 0;
             const stockWarning = document.getElementById('stockWarning');
@@ -314,12 +341,34 @@
             }
         }
 
+        // Update payment info based on method
+        function updatePaymentInfo() {
+            const paymentMethod = document.getElementById('payment_method').value;
+            const paymentInfo = document.getElementById('payment-info');
+            
+            switch(paymentMethod) {
+                case 'KHALTI':
+                    paymentInfo.innerHTML = '<small>Khalti payments are processed automatically with reference ID</small>';
+                    break;
+                case 'CASH':
+                    paymentInfo.innerHTML = '<small>Cash payments are marked as paid immediately</small>';
+                    break;
+                case 'BANK_TRANSFER':
+                    paymentInfo.innerHTML = '<small>Bank transfer payments are marked as paid immediately</small>';
+                    break;
+                case 'CREDIT':
+                    paymentInfo.innerHTML = '<small>Credit transactions may require manual payment processing</small>';
+                    break;
+            }
+        }
+
         // Event listeners
         document.addEventListener('DOMContentLoaded', function() {
-            const quantityInput = document.getElementById('{{ form.quantity.id_for_label }}');
-            const unitPriceInput = document.getElementById('{{ form.unit_price.id_for_label }}');
-            const itemSelect = document.getElementById('{{ form.item.id_for_label }}');
-            const transactionTypeSelect = document.getElementById('{{ form.transaction_type.id_for_label }}');
+            const quantityInput = document.getElementById('quantity');
+            const unitPriceInput = document.getElementById('unit_price');
+            const itemSelect = document.getElementById('item');
+            const transactionTypeSelect = document.getElementById('transaction_type');
+            const paymentMethodSelect = document.getElementById('payment_method');
 
             quantityInput.addEventListener('input', function() {
                 calculateTotal();
@@ -329,6 +378,10 @@
             unitPriceInput.addEventListener('input', calculateTotal);
             itemSelect.addEventListener('change', updateStockInfo);
             transactionTypeSelect.addEventListener('change', checkStockWarning);
+            paymentMethodSelect.addEventListener('change', updatePaymentInfo);
+
+            // Initialize payment info
+            updatePaymentInfo();
 
             // Form validation
             const forms = document.querySelectorAll('.needs-validation');

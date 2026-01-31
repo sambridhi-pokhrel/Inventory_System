@@ -204,7 +204,9 @@ def dashboard(request):
 
 
 def logout_view(request):
+    """Simple logout view that works with GET requests"""
     logout(request)
+    messages.success(request, 'You have been successfully logged out.')
     return redirect('users:login')
 
 
