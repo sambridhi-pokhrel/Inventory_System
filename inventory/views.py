@@ -81,29 +81,60 @@ def item_list(request):
 
 @approved_user_required
 def reorder_suggestions(request):
-    """View all reorder suggestions with predictive analytics"""
-    items = Item.objects.all()
-    suggestions = []
+    """View AI-powered reorder suggestions with machine learning insights"""
+    from .ml_predictor import get_ai_reorder_suggestions, ml_predictor
     
-    for item in items:
-        if item.needs_reorder:
-            daily_usage = item.get_average_daily_usage()
-            predicted_needed = item.get_predicted_stock_needed()
-            suggestions.append({
-                'item': item,
-                'daily_usage': daily_usage,
-                'predicted_needed': predicted_needed,
-                'days_until_stockout': item.quantity / daily_usage if daily_usage > 0 else float('inf'),
-                'suggested_quantity': item.suggested_reorder_quantity,
-            })
+    # Get AI-powered suggestions
+    ai_suggestions = get_ai_reorder_suggestions()
     
-    # Sort by urgency (days until stockout)
-    suggestions.sort(key=lambda x: x['days_until_stockout'])
+    # Prepare detailed suggestions with AI insights
+    detailed_suggestions = []
+    for suggestion in ai_suggestions:
+        item = suggestion['item']
+        recommendation = suggestion['recommendation']
+        
+        # Get model information
+        model_info = ml_predictor.get_model_info(item)
+        
+        # Handle cases where AI prediction failed
+        urgency = recommendation.get('urgency', 'LOW')
+        urgency_class = urgency.lower()
+        
+        detailed_suggestions.append({
+            'item': item,
+            'recommendation': recommendation,
+            'model_info': model_info,
+            'urgency_class': urgency_class,
+            'urgency_icon': {
+                'CRITICAL': 'bi-exclamation-triangle-fill text-danger',
+                'HIGH': 'bi-exclamation-triangle text-warning',
+                'MEDIUM': 'bi-info-circle text-info',
+                'LOW': 'bi-check-circle text-success'
+            }.get(urgency, 'bi-info-circle')
+        })
+    
+    # Calculate summary statistics
+    total_suggestions = len(detailed_suggestions)
+    critical_count = sum(1 for s in detailed_suggestions if s['recommendation'].get('urgency') == 'CRITICAL')
+    high_count = sum(1 for s in detailed_suggestions if s['recommendation'].get('urgency') == 'HIGH')
+    
+    # Get overall AI system status
+    total_items = Item.objects.count()
+    items_with_models = len(ml_predictor.models)
+    ai_coverage = (items_with_models / total_items * 100) if total_items > 0 else 0
     
     context = UserRoleManager.get_context_for_user(request.user)
     context.update({
-        'suggestions': suggestions,
-        'total_suggestions': len(suggestions),
+        'suggestions': detailed_suggestions,
+        'total_suggestions': total_suggestions,
+        'critical_count': critical_count,
+        'high_count': high_count,
+        'ai_system_status': {
+            'total_items': total_items,
+            'items_with_ai_models': items_with_models,
+            'ai_coverage_percent': round(ai_coverage, 1),
+            'system_status': 'Active' if items_with_models > 0 else 'Training Required'
+        }
     })
     
     return render(request, 'inventory/reorder_suggestions.html', context)
@@ -350,8 +381,22 @@ def transaction_create(request):
         
         try:
             item = Item.objects.get(id=item_id)
-            quantity = int(quantity)
+            # Convert quantity to integer (handle decimal inputs)
+            quantity = int(float(quantity))  # Convert to float first, then to int
             unit_price = float(unit_price)
+            
+            # Validate inputs
+            if quantity <= 0:
+                messages.error(request, "Quantity must be greater than 0.")
+                context = UserRoleManager.get_context_for_user(request.user)
+                context.update({'items': Item.objects.all().order_by('name')})
+                return render(request, 'inventory/transaction_create.html', context)
+            
+            if unit_price <= 0:
+                messages.error(request, "Unit price must be greater than 0.")
+                context = UserRoleManager.get_context_for_user(request.user)
+                context.update({'items': Item.objects.all().order_by('name')})
+                return render(request, 'inventory/transaction_create.html', context)
             
             # Create transaction
             transaction = Transaction.objects.create(
@@ -384,6 +429,10 @@ def transaction_create(request):
             
             return redirect('inventory:transaction_list')
             
+        except ValueError as e:
+            messages.error(request, "Please enter valid numbers for quantity and price.")
+        except Item.DoesNotExist:
+            messages.error(request, "Selected item does not exist.")
         except Exception as e:
             messages.error(request, f"Error creating transaction: {str(e)}")
     
@@ -455,7 +504,118 @@ def get_item_price(request):
 
 
 @manager_or_admin_required
+def ai_model_management(request):
+    """Manage AI models for demand forecasting"""
+    from .ml_predictor import ml_predictor, train_all_models
+    
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        
+        if action == 'train_all':
+            # Train models for all items
+            results = train_all_models()
+            success_count = sum(1 for r in results.values() if r['success'])
+            total_count = len(results)
+            
+            if success_count > 0:
+                messages.success(
+                    request, 
+                    f"Successfully trained AI models for {success_count}/{total_count} items!"
+                )
+            else:
+                messages.warning(request, "No AI models could be trained. Items may need more transaction history.")
+        
+        elif action == 'train_single':
+            item_id = request.POST.get('item_id')
+            try:
+                item = Item.objects.get(id=item_id)
+                result = ml_predictor.train_demand_model(item)
+                
+                if result['success']:
+                    messages.success(
+                        request,
+                        f"AI model trained for {item.name} with {result['metrics']['accuracy']:.1f}% accuracy!"
+                    )
+                else:
+                    messages.error(request, f"Failed to train model for {item.name}: {result['error']}")
+            except Item.DoesNotExist:
+                messages.error(request, "Item not found.")
+    
+    # Get model status for all items
+    items_status = []
+    for item in Item.objects.all():
+        model_info = ml_predictor.get_model_info(item)
+        
+        # Get recent transaction count
+        recent_sales = Transaction.objects.filter(
+            item=item,
+            transaction_type='SALE',
+            timestamp__gte=timezone.now() - timedelta(days=90)
+        ).count()
+        
+        items_status.append({
+            'item': item,
+            'has_model': model_info is not None,
+            'model_info': model_info,
+            'recent_sales_count': recent_sales,
+            'can_train': recent_sales >= 7,  # Minimum data requirement
+        })
+    
+    # Calculate summary statistics
+    total_items = len(items_status)
+    items_with_models = sum(1 for item in items_status if item['has_model'])
+    items_trainable = sum(1 for item in items_status if item['can_train'])
+    
+    context = UserRoleManager.get_context_for_user(request.user)
+    context.update({
+        'items_status': items_status,
+        'summary': {
+            'total_items': total_items,
+            'items_with_models': items_with_models,
+            'items_trainable': items_trainable,
+            'coverage_percent': round((items_with_models / total_items * 100) if total_items > 0 else 0, 1)
+        }
+    })
+    
+    return render(request, 'inventory/ai_model_management.html', context)
+
+
+@manager_or_admin_required
+def ai_demand_forecast(request, item_id):
+    """View AI demand forecast for a specific item"""
+    item = get_object_or_404(Item, id=item_id)
+    
+    # Get AI forecast
+    forecast_result = item.get_ai_demand_forecast(days=14)  # 2 weeks forecast
+    reorder_info = item.ai_reorder_info
+    
+    context = UserRoleManager.get_context_for_user(request.user)
+    context.update({
+        'item': item,
+        'forecast_result': forecast_result,
+        'reorder_info': reorder_info,
+    })
+    
+    return render(request, 'inventory/ai_demand_forecast.html', context)
+
+
+@manager_or_admin_required
 def transaction_export_csv(request):
+    """View AI demand forecast for a specific item"""
+    item = get_object_or_404(Item, id=item_id)
+    
+    # Get AI forecast
+    forecast_result = item.get_ai_demand_forecast(days=14)  # 2 weeks forecast
+    reorder_info = item.ai_reorder_info
+    
+    context = UserRoleManager.get_context_for_user(request.user)
+    context.update({
+        'item': item,
+        'forecast_result': forecast_result,
+        'reorder_info': reorder_info,
+    })
+    
+    return render(request, 'inventory/ai_demand_forecast.html', context)
     """Export transaction data to CSV with payment information"""
     response = HttpResponse(content_type='text/csv')
     response['Content-Disposition'] = 'attachment; filename="transactions_report.csv"'

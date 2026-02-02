@@ -1,9 +1,9 @@
-{% load inventory_extras %}
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="utf-8">
-    <title>Reorder Suggestions | Inventory Management System</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI-Powered Reorder Suggestions - Inventory Management</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -39,7 +39,7 @@
                     </li>
                     <li class="nav-item">
                         <a class="nav-link active" href="{% url 'inventory:reorder_suggestions' %}">
-                            <i class="bi bi-arrow-repeat me-1"></i>Reorder
+                            <i class="bi bi-robot me-1"></i>AI Reorder
                         </a>
                     </li>
                     {% if user.is_superuser %}
@@ -70,12 +70,22 @@
     <div class="dashboard-header">
         <div class="container">
             <div class="row align-items-center">
-                <div class="col-md-12">
+                <div class="col-md-8">
                     <h1 class="display-5 fw-bold mb-2">
-                        <i class="bi bi-arrow-repeat me-3"></i>
-                        Predictive Reorder Suggestions
+                        <i class="bi bi-robot me-3"></i>
+                        AI-Powered Reorder Suggestions
                     </h1>
-                    <p class="lead mb-0">AI-powered inventory reordering based on usage patterns and lead times</p>
+                    <p class="lead mb-0">Machine learning-driven inventory demand forecasting and reorder recommendations</p>
+                </div>
+                <div class="col-md-4 text-md-end">
+                    {% if user_role == "admin" or user_role == "manager" %}
+                    <a href="{% url 'inventory:ai_model_management' %}" class="btn btn-outline-light me-2">
+                        <i class="bi bi-gear me-1"></i>Manage AI Models
+                    </a>
+                    {% endif %}
+                    <a href="{% url 'inventory:item_list' %}" class="btn btn-outline-light">
+                        <i class="bi bi-arrow-left me-1"></i>Back to Inventory
+                    </a>
                 </div>
             </div>
         </div>
@@ -100,158 +110,195 @@
         </div>
     {% endif %}
 
-    <!-- Main Content -->
-    <div class="container">
-        <!-- Summary Card -->
-        <div class="row mb-4">
-            <div class="col-12">
-                <div class="stat-card warning">
+    <!-- AI System Status -->
+    <div class="container mb-4">
+        <div class="row">
+            <div class="col-lg-3 col-md-6 mb-3">
+                <div class="card border-primary">
                     <div class="card-body text-center">
-                        <i class="bi bi-exclamation-triangle display-4 text-warning mb-3"></i>
-                        <h3 class="fw-bold text-warning">{{ total_suggestions }}</h3>
-                        <p class="text-muted mb-0">Items Need Reordering</p>
-                        {% if total_suggestions > 0 %}
-                            <small class="text-warning">Based on predictive analytics and current usage patterns</small>
-                        {% else %}
-                            <small class="text-success">All items are adequately stocked!</small>
-                        {% endif %}
+                        <i class="bi bi-robot display-6 text-primary mb-2"></i>
+                        <h6 class="text-primary">AI System Status</h6>
+                        <p class="mb-0 fw-bold">{{ ai_system_status.system_status }}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6 mb-3">
+                <div class="card border-info">
+                    <div class="card-body text-center">
+                        <i class="bi bi-graph-up display-6 text-info mb-2"></i>
+                        <h6 class="text-info">AI Coverage</h6>
+                        <p class="mb-0 fw-bold">{{ ai_system_status.ai_coverage_percent }}%</p>
+                        <small class="text-muted">{{ ai_system_status.items_with_ai_models }}/{{ ai_system_status.total_items }} items</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6 mb-3">
+                <div class="card border-danger">
+                    <div class="card-body text-center">
+                        <i class="bi bi-exclamation-triangle display-6 text-danger mb-2"></i>
+                        <h6 class="text-danger">Critical Alerts</h6>
+                        <p class="mb-0 fw-bold">{{ critical_count }}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6 mb-3">
+                <div class="card border-warning">
+                    <div class="card-body text-center">
+                        <i class="bi bi-clock display-6 text-warning mb-2"></i>
+                        <h6 class="text-warning">High Priority</h6>
+                        <p class="mb-0 fw-bold">{{ high_count }}</p>
                     </div>
                 </div>
             </div>
         </div>
+    </div>
 
-        <!-- Reorder Suggestions -->
+    <!-- Main Content -->
+    <div class="container">
         {% if suggestions %}
-            <div class="card">
-                <div class="card-header bg-light">
-                    <h5 class="card-title mb-0">
-                        <i class="bi bi-graph-up me-2 text-primary"></i>
-                        Predictive Reorder Analysis
-                    </h5>
-                </div>
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-hover mb-0">
-                            <thead>
-                                <tr>
-                                    <th>Item</th>
-                                    <th>Current Stock</th>
-                                    <th>Daily Usage</th>
-                                    <th>Days Until Stockout</th>
-                                    <th>Lead Time</th>
-                                    <th>Predicted Need</th>
-                                    <th>Suggested Order</th>
-                                    <th>Urgency</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for suggestion in suggestions %}
-                                    <tr>
-                                        <td>
-                                            <div class="d-flex align-items-center">
-                                                <i class="bi bi-box me-2 text-primary"></i>
-                                                <div>
-                                                    <strong>{{ suggestion.item.name }}</strong>
-                                                    <br>
-                                                    <small class="text-muted">Rs. {{ suggestion.item.price }}</small>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <span class="fw-bold">{{ suggestion.item.quantity }}</span>
-                                            <br>
-                                            <small class="text-muted">Reorder at {{ suggestion.item.reorder_level }}</small>
-                                        </td>
-                                        <td>
-                                            <span class="fw-bold">{{ suggestion.daily_usage|floatformat:1 }}</span>
-                                            <br>
-                                            <small class="text-muted">units/day</small>
-                                        </td>
-                                        <td>
-                                            {% if suggestion.days_until_stockout == inf %}
-                                                <span class="badge bg-success">No usage</span>
-                                            {% elif suggestion.days_until_stockout <= 3 %}
-                                                <span class="badge bg-danger">{{ suggestion.days_until_stockout|floatformat:0 }} days</span>
-                                            {% elif suggestion.days_until_stockout <= 7 %}
-                                                <span class="badge bg-warning">{{ suggestion.days_until_stockout|floatformat:0 }} days</span>
+            <div class="row">
+                {% for suggestion in suggestions %}
+                    <div class="col-lg-6 mb-4">
+                        <div class="card border-{{ suggestion.urgency_class }}">
+                            <div class="card-header bg-{{ suggestion.urgency_class }} bg-opacity-10">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <h5 class="card-title mb-0">
+                                        <i class="bi bi-box me-2"></i>
+                                        {{ suggestion.item.name }}
+                                    </h5>
+                                    <span class="badge bg-{{ suggestion.urgency_class }}">
+                                        <i class="{{ suggestion.urgency_icon }} me-1"></i>
+                                        {{ suggestion.recommendation.urgency }}
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <!-- Current Status -->
+                                <div class="row mb-3">
+                                    <div class="col-6">
+                                        <small class="text-muted">Current Stock</small>
+                                        <div class="fw-bold">{{ suggestion.recommendation.current_stock }} units</div>
+                                    </div>
+                                    <div class="col-6">
+                                        <small class="text-muted">Days Until Stockout</small>
+                                        <div class="fw-bold">
+                                            {% if suggestion.recommendation.days_until_stockout == 'inf' %}
+                                                ∞
                                             {% else %}
-                                                <span class="badge bg-info">{{ suggestion.days_until_stockout|floatformat:0 }} days</span>
+                                                {{ suggestion.recommendation.days_until_stockout }} days
                                             {% endif %}
-                                        </td>
-                                        <td>
-                                            <span class="fw-bold">{{ suggestion.item.lead_time_days }}</span>
-                                            <br>
-                                            <small class="text-muted">days</small>
-                                        </td>
-                                        <td>
-                                            <span class="fw-bold text-info">{{ suggestion.predicted_needed|floatformat:0 }}</span>
-                                            <br>
-                                            <small class="text-muted">for lead time</small>
-                                        </td>
-                                        <td>
-                                            <span class="fw-bold text-success">{{ suggestion.suggested_quantity }}</span>
-                                            <br>
-                                            <small class="text-muted">units (+20% buffer)</small>
-                                        </td>
-                                        <td>
-                                            {% if suggestion.days_until_stockout <= 3 %}
-                                                <span class="badge bg-danger">
-                                                    <i class="bi bi-exclamation-triangle me-1"></i>Critical
-                                                </span>
-                                            {% elif suggestion.days_until_stockout <= 7 %}
-                                                <span class="badge bg-warning">
-                                                    <i class="bi bi-exclamation-circle me-1"></i>High
-                                                </span>
-                                            {% else %}
-                                                <span class="badge bg-info">
-                                                    <i class="bi bi-info-circle me-1"></i>Medium
-                                                </span>
-                                            {% endif %}
-                                        </td>
-                                    </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
+                                        </div>
+                                    </div>
+                                </div>
 
-            <!-- Action Buttons -->
-            <div class="row mt-4">
-                <div class="col-12 text-center">
-                    <a href="{% url 'inventory:item_list' %}" class="btn btn-primary me-2">
-                        <i class="bi bi-box me-1"></i>View Full Inventory
-                    </a>
-                    {% if user|can_add_items %}
-                        <a href="{% url 'inventory:transaction_create' %}" class="btn btn-success">
-                            <i class="bi bi-plus-circle me-1"></i>Create Purchase Order
-                        </a>
-                    {% endif %}
-                </div>
-            </div>
+                                <!-- AI Predictions -->
+                                {% if suggestion.recommendation.ai_powered %}
+                                <div class="alert alert-info mb-3">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <i class="bi bi-robot me-2"></i>
+                                        <strong>AI Prediction</strong>
+                                        <span class="badge bg-success ms-auto">{{ suggestion.recommendation.model_accuracy }}</span>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-6">
+                                            <small class="text-muted">Predicted Demand</small>
+                                            <div class="fw-bold">{{ suggestion.recommendation.predicted_demand }} units</div>
+                                            <small class="text-muted">Next {{ suggestion.item.lead_time_days }} days</small>
+                                        </div>
+                                        <div class="col-6">
+                                            <small class="text-muted">Shortage Risk</small>
+                                            <div class="fw-bold text-danger">{{ suggestion.recommendation.shortage_risk }} units</div>
+                                            <small class="text-muted">Including safety buffer</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endif %}
 
-        {% else %}
-            <!-- No Suggestions -->
-            <div class="card">
-                <div class="card-body text-center py-5">
-                    <i class="bi bi-check-circle display-1 text-success mb-3"></i>
-                    <h4 class="text-success">All Items Well Stocked!</h4>
-                    <p class="text-muted mb-4">
-                        Based on current usage patterns and lead times, no items require immediate reordering.
-                    </p>
-                    <div class="row justify-content-center">
-                        <div class="col-md-6">
-                            <div class="alert alert-info">
-                                <i class="bi bi-info-circle me-2"></i>
-                                <strong>How it works:</strong> Our predictive algorithm analyzes your sales history 
-                                to calculate daily usage rates and predicts when you'll need to reorder based on 
-                                lead times and current stock levels.
+                                <!-- Recommendation -->
+                                <div class="alert alert-{{ suggestion.urgency_class }} mb-3">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <i class="bi bi-lightbulb me-2"></i>
+                                        <strong>AI Recommendation</strong>
+                                    </div>
+                                    <p class="mb-2">
+                                        <strong>Order {{ suggestion.recommendation.suggested_quantity }} units</strong>
+                                        to meet predicted demand and maintain safety stock.
+                                    </p>
+                                    {% if suggestion.recommendation.ai_insights %}
+                                    <small class="text-muted">
+                                        Based on {{ suggestion.recommendation.ai_insights.avg_daily_demand }} avg daily demand 
+                                        over {{ suggestion.recommendation.ai_insights.forecast_period }} 
+                                        ({{ suggestion.recommendation.ai_insights.confidence }} confidence)
+                                    </small>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Actions -->
+                                <div class="d-flex gap-2">
+                                    <a href="{% url 'inventory:ai_demand_forecast' suggestion.item.id %}" class="btn btn-outline-primary btn-sm">
+                                        <i class="bi bi-graph-up me-1"></i>View Forecast
+                                    </a>
+                                    {% if user_role == "admin" or user_role == "manager" %}
+                                    <a href="{% url 'inventory:item_edit' suggestion.item.id %}" class="btn btn-outline-secondary btn-sm">
+                                        <i class="bi bi-pencil me-1"></i>Edit Item
+                                    </a>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Model Info -->
+                                {% if suggestion.model_info %}
+                                <div class="mt-3 pt-3 border-top">
+                                    <small class="text-muted">
+                                        <i class="bi bi-info-circle me-1"></i>
+                                        Model: {{ suggestion.model_info.model_type }} | 
+                                        Accuracy: {{ suggestion.model_info.metrics.accuracy|floatformat:1 }}% |
+                                        Trained: {{ suggestion.model_info.last_trained|date:"M d, Y" }}
+                                    </small>
+                                </div>
+                                {% endif %}
                             </div>
                         </div>
                     </div>
-                    <a href="{% url 'inventory:item_list' %}" class="btn btn-primary">
-                        <i class="bi bi-box me-1"></i>View Inventory
-                    </a>
+                {% endfor %}
+            </div>
+        {% else %}
+            <!-- No Suggestions -->
+            <div class="row justify-content-center">
+                <div class="col-lg-8">
+                    <div class="card">
+                        <div class="card-body text-center py-5">
+                            <i class="bi bi-check-circle display-1 text-success mb-4"></i>
+                            <h3 class="text-success mb-3">All Items Well Stocked!</h3>
+                            <p class="text-muted mb-4">
+                                The AI system has analyzed all inventory items and found no immediate reorder requirements.
+                                All items have sufficient stock based on predicted demand patterns.
+                            </p>
+                            
+                            {% if ai_system_status.items_with_ai_models == 0 %}
+                            <div class="alert alert-warning">
+                                <i class="bi bi-exclamation-triangle me-2"></i>
+                                <strong>AI Models Not Trained</strong><br>
+                                No AI models are currently trained. Items need transaction history to enable AI predictions.
+                                {% if user_role == "admin" or user_role == "manager" %}
+                                <a href="{% url 'inventory:ai_model_management' %}" class="btn btn-warning btn-sm ms-2">
+                                    <i class="bi bi-gear me-1"></i>Manage AI Models
+                                </a>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                            
+                            <div class="d-flex gap-2 justify-content-center">
+                                <a href="{% url 'inventory:item_list' %}" class="btn btn-primary">
+                                    <i class="bi bi-box me-1"></i>View Inventory
+                                </a>
+                                {% if user_role == "admin" or user_role == "manager" %}
+                                <a href="{% url 'inventory:ai_model_management' %}" class="btn btn-outline-primary">
+                                    <i class="bi bi-robot me-1"></i>AI Models
+                                </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         {% endif %}

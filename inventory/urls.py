@@ -11,8 +11,10 @@ urlpatterns = [
     path("delete/<int:item_id>/", views.item_delete, name="item_delete"),
     path("export/csv/", views.export_csv, name="export_csv"),
     
-    # Predictive Reordering URLs
+    # AI-Powered Predictive Reordering URLs
     path("reorder-suggestions/", views.reorder_suggestions, name="reorder_suggestions"),
+    path("ai/models/", views.ai_model_management, name="ai_model_management"),
+    path("ai/forecast/<int:item_id>/", views.ai_demand_forecast, name="ai_demand_forecast"),
     
     # Transaction URLs
     path("transactions/", views.transaction_list, name="transaction_list"),

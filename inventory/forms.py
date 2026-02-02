@@ -39,7 +39,7 @@ class TransactionForm(forms.ModelForm):
         self.fields['item'].label = 'Select Item'
         self.fields['transaction_type'].label = 'Transaction Type'
         self.fields['quantity'].label = 'Quantity'
-        self.fields['unit_price'].label = 'Unit Price ($)'
+        self.fields['unit_price'].label = 'Unit Price (Rs.)'
         self.fields['notes'].label = 'Notes (Optional)'
         
         # Add help text

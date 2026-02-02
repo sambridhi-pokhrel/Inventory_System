@@ -125,7 +125,25 @@ def user_management(request):
 def approve_user(request, user_id):
     """Approve a user and assign role"""
     if request.method == 'POST':
-        user_profile = get_object_or_404(UserProfile, user_id=user_id)
+        try:
+            user_profile = get_object_or_404(UserProfile, user_id=user_id)
+        except:
+            # If UserProfile doesn't exist, try to create it for the user
+            try:
+                user = get_object_or_404(User, id=user_id)
+                user_profile, created = UserProfile.objects.get_or_create(
+                    user=user,
+                    defaults={
+                        'approval_status': 'pending',
+                        'is_approved': False
+                    }
+                )
+                if created:
+                    messages.info(request, f'Created profile for user {user.username}.')
+            except:
+                messages.error(request, 'User not found or profile could not be created.')
+                return redirect('users:user_management')
+        
         role = request.POST.get('role')
         
         if role not in ['manager', 'staff']:
@@ -184,11 +202,11 @@ def dashboard(request):
     context.update({
         "user": request.user,
         "total_items": total_items,
-        "low_stock_count": low_stock_count,
-        "out_of_stock_count": out_of_stock_count,
+        "low_stock_items": low_stock_count,  # This matches the template variable
+        "out_of_stock_items": out_of_stock_count,  # This matches the template variable
         "total_value": total_value,
         "recent_items": recent_items,
-        "low_stock_items": low_stock_items[:5],  # Show top 5 low stock items
+        "low_stock_items_list": low_stock_items[:5],  # Renamed to avoid conflict
     })
     
     # Add admin-specific data

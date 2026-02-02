@@ -52,9 +52,54 @@ class Item(models.Model):
     
     @property
     def needs_reorder(self):
-        """Check if item needs reordering based on predictive logic"""
-        predicted_needed = self.get_predicted_stock_needed()
-        return self.quantity < predicted_needed
+        """Check if item needs reordering using AI-based prediction"""
+        try:
+            # Import here to avoid circular imports
+            from .ml_predictor import ml_predictor
+            
+            # Get AI-powered recommendation
+            recommendation = ml_predictor.calculate_reorder_recommendation(self)
+            return recommendation['needs_reorder']
+            
+        except Exception as e:
+            # Fallback to basic logic if AI fails
+            print(f"AI prediction failed for {self.name}: {e}")
+            return self.quantity <= self.reorder_level or self.quantity == 0
+    
+    @property
+    def ai_reorder_info(self):
+        """Get detailed AI-based reorder information"""
+        try:
+            from .ml_predictor import ml_predictor
+            return ml_predictor.calculate_reorder_recommendation(self)
+        except Exception as e:
+            return {
+                'needs_reorder': self.quantity <= self.reorder_level,
+                'ai_powered': False,
+                'error': str(e)
+            }
+    
+    def get_ai_demand_forecast(self, days=7):
+        """Get AI-powered demand forecast"""
+        try:
+            from .ml_predictor import ml_predictor
+            return ml_predictor.predict_future_demand(self, days)
+        except Exception as e:
+            return {
+                'success': False,
+                'error': str(e)
+            }
+    
+    def train_ai_model(self):
+        """Train AI model for this specific item"""
+        try:
+            from .ml_predictor import ml_predictor
+            return ml_predictor.train_demand_model(self)
+        except Exception as e:
+            return {
+                'success': False,
+                'error': str(e)
+            }
     
     @property
     def suggested_reorder_quantity(self):
@@ -133,8 +178,9 @@ class Transaction(models.Model):
         return False
     
     def save(self, *args, **kwargs):
-        # Calculate total amount
-        self.total_amount = Decimal(str(self.quantity)) * self.unit_price
+        # Calculate total amount - ensure both values are Decimal
+        from decimal import Decimal
+        self.total_amount = Decimal(str(self.quantity)) * Decimal(str(self.unit_price))
         
         # Validate before saving
         self.clean()
