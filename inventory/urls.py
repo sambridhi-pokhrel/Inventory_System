@@ -16,6 +16,10 @@ urlpatterns = [
     path("ai/models/", views.ai_model_management, name="ai_model_management"),
     path("ai/forecast/<int:item_id>/", views.ai_demand_forecast, name="ai_demand_forecast"),
     
+    # Analytics URLs
+    path("analytics/", views.analytics_dashboard, name="analytics_dashboard"),
+    path("analytics/item/<int:item_id>/", views.item_analytics, name="item_analytics"),
+    
     # Transaction URLs
     path("transactions/", views.transaction_list, name="transaction_list"),
     path("transactions/create/", views.transaction_create, name="transaction_create"),

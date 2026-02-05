@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analytics Dashboard - Inventory Management</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="/static/css/emerald-theme.css?v=2" rel="stylesheet">
+</head>
+<body class="fade-in">
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-light">
+        <div class="container">
+            <a class="navbar-brand" href="{% url 'users:dashboard' %}">
+                <i class="bi bi-box-seam me-2"></i>
+                Inventory System
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'users:dashboard' %}">
+                            <i class="bi bi-speedometer2 me-1"></i>Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'inventory:item_list' %}">
+                            <i class="bi bi-box me-1"></i>Inventory
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'inventory:transaction_list' %}">
+                            <i class="bi bi-receipt me-1"></i>Transactions
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'inventory:reorder_suggestions' %}">
+                            <i class="bi bi-robot me-1"></i>AI Reorder
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="{% url 'inventory:analytics_dashboard' %}">
+                            <i class="bi bi-graph-up me-1"></i>Analytics
+                        </a>
+                    </li>
+                    {% if user.is_superuser %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'users:user_management' %}">
+                            <i class="bi bi-people me-1"></i>Users
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <span class="nav-link">
+                            <i class="bi bi-person-circle me-1"></i>{{ user.first_name|default:user.username }}
+                        </span>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'users:logout' %}">
+                            <i class="bi bi-box-arrow-right me-1"></i>Logout
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Header Section -->
+    <div class="dashboard-header">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h1 class="display-5 fw-bold mb-2">
+                        <i class="bi bi-graph-up me-3"></i>
+                        Analytics Dashboard
+                    </h1>
+                    <p class="lead mb-0">Professional data visualization and business intelligence insights</p>
+                </div>
+                <div class="col-md-4 text-md-end">
+                    <a href="{% url 'inventory:item_list' %}" class="btn btn-outline-light">
+                        <i class="bi bi-arrow-left me-1"></i>Back to Inventory
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Messages -->
+    {% if messages %}
+        <div class="container mb-4">
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                    {% if message.tags == 'error' %}
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                    {% elif message.tags == 'success' %}
+                        <i class="bi bi-check-circle me-2"></i>
+                    {% else %}
+                        <i class="bi bi-info-circle me-2"></i>
+                    {% endif %}
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <!-- Main Content -->
+    <div class="container">
+        <!-- Sales Trend Analysis -->
+        {% if sales_trend %}
+        <div class="row mb-5">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-light">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="card-title mb-0">
+                                <i class="bi bi-graph-up me-2 text-primary"></i>
+                                Sales Trend Analysis
+                            </h5>
+                            <span class="badge bg-primary">Matplotlib Visualization</span>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-4">
+                            <div class="col-md-3">
+                                <div class="text-center">
+                                    <div class="h4 text-primary">Rs. {{ sales_trend.summary.total_sales|floatformat:0 }}</div>
+                                    <small class="text-muted">Total Sales ({{ sales_trend.summary.days_analyzed }} days)</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="text-center">
+                                    <div class="h4 text-info">Rs. {{ sales_trend.summary.avg_daily_sales|floatformat:0 }}</div>
+                                    <small class="text-muted">Average Daily Sales</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="text-center">
+                                    <div class="h4 text-success">{{ sales_trend.summary.total_transactions }}</div>
+                                    <small class="text-muted">Total Transactions</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="text-center">
+                                    <div class="h4 text-warning">{{ sales_trend.summary.peak_day }}</div>
+                                    <small class="text-muted">Peak Sales Day</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="text-center">
+                            <img src="data:image/png;base64,{{ sales_trend.image }}" class="img-fluid" alt="Sales Trend Chart">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Actual vs Predicted Demand -->
+        {% if actual_vs_predicted and not actual_vs_predicted.error %}
+        <div class="row mb-5">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-light">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="card-title mb-0">
+                                <i class="bi bi-robot me-2 text-primary"></i>
+                                AI Prediction Analysis - {{ actual_vs_predicted.item_name }}
+                            </h5>
+                            <span class="badge bg-success">AI-Powered</span>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-4">
+                            <div class="col-md-3">
+                                <div class="text-center">
+                                    <div class="h4 text-primary">{{ actual_vs_predicted.summary.total_actual }}</div>
+                                    <small class="text-muted">Total Actual Sales</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="text-center">
+                                    <div class="h4 text-danger">{{ actual_vs_predicted.summary.total_predicted|floatformat:0 }}</div>
+                                    <small class="text-muted">Total Predicted Demand</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="text-center">
+                                    <div class="h4 text-info">{{ actual_vs_predicted.summary.avg_actual|floatformat:1 }}</div>
+                                    <small class="text-muted">Avg Daily Actual</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="text-center">
+                                    <div class="h4 text-success">{{ actual_vs_predicted.summary.model_accuracy }}</div>
+                                    <small class="text-muted">Model Accuracy</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="text-center">
+                            <img src="data:image/png;base64,{{ actual_vs_predicted.image }}" class="img-fluid" alt="Actual vs Predicted Chart">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="row mb-5">
+            <!-- Inventory Performance -->
+            {% if inventory_performance %}
+            <div class="col-lg-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-header bg-light">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-box me-2 text-primary"></i>
+                            Inventory Performance
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-6">
+                                <div class="text-center">
+                                    <div class="h5 text-success">{{ inventory_performance.summary.well_stocked }}</div>
+                                    <small class="text-muted">Well Stocked</small>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="text-center">
+                                    <div class="h5 text-danger">{{ inventory_performance.summary.out_of_stock }}</div>
+                                    <small class="text-muted">Out of Stock</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="text-center mb-3">
+                            <div class="h4 text-primary">{{ inventory_performance.summary.stock_efficiency|floatformat:1 }}%</div>
+                            <small class="text-muted">Stock Efficiency</small>
+                        </div>
+                        <div class="text-center">
+                            <img src="data:image/png;base64,{{ inventory_performance.image }}" class="img-fluid" alt="Inventory Performance Chart">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- AI Model Performance -->
+            {% if ai_performance and not ai_performance.error %}
+            <div class="col-lg-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-header bg-light">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-cpu me-2 text-primary"></i>
+                            AI Model Performance
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-6">
+                                <div class="text-center">
+                                    <div class="h5 text-success">{{ ai_performance.summary.trained_models }}</div>
+                                    <small class="text-muted">Trained Models</small>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="text-center">
+                                    <div class="h5 text-info">{{ ai_performance.summary.avg_accuracy|floatformat:1 }}%</div>
+                                    <small class="text-muted">Avg Accuracy</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="text-center mb-3">
+                            <div class="h4 text-primary">{{ ai_performance.summary.ai_coverage|floatformat:1 }}%</div>
+                            <small class="text-muted">AI Coverage</small>
+                        </div>
+                        <div class="text-center">
+                            <img src="data:image/png;base64,{{ ai_performance.image }}" class="img-fluid" alt="AI Performance Chart">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Academic Note -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card border-info">
+                    <div class="card-header bg-info bg-opacity-10">
+                        <h5 class="card-title mb-0 text-info">
+                            <i class="bi bi-info-circle me-2"></i>
+                            Academic Implementation Notes
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6 class="fw-bold">Visualization Technology</h6>
+                                <ul class="list-unstyled">
+                                    <li><i class="bi bi-check text-success me-2"></i>Matplotlib-based professional charts</li>
+                                    <li><i class="bi bi-check text-success me-2"></i>Real-time data visualization</li>
+                                    <li><i class="bi bi-check text-success me-2"></i>Academic-grade presentation quality</li>
+                                </ul>
+                            </div>
+                            <div class="col-md-6">
+                                <h6 class="fw-bold">Data Sources</h6>
+                                <ul class="list-unstyled">
+                                    <li><i class="bi bi-arrow-right text-primary me-2"></i>Historical transaction data</li>
+                                    <li><i class="bi bi-arrow-right text-primary me-2"></i>AI prediction algorithms</li>
+                                    <li><i class="bi bi-arrow-right text-primary me-2"></i>Real inventory metrics</li>
+                                    <li><i class="bi bi-arrow-right text-primary me-2"></i>Machine learning model performance</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

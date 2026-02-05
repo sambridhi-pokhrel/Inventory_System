@@ -600,6 +600,77 @@ def ai_demand_forecast(request, item_id):
 
 
 @manager_or_admin_required
+def analytics_dashboard(request):
+    """Analytics dashboard with comprehensive visualizations"""
+    from .analytics import analytics
+    
+    # Generate all charts
+    sales_trend = analytics.generate_sales_trend_chart(days=30)
+    inventory_performance = analytics.generate_inventory_performance_chart()
+    ai_performance = analytics.generate_ai_model_performance_chart()
+    
+    # Get top selling item for actual vs predicted chart
+    top_item = Transaction.objects.filter(
+        transaction_type='SALE',
+        payment_status='PAID'
+    ).values('item').annotate(
+        total_sold=Sum('quantity')
+    ).order_by('-total_sold').first()
+    
+    actual_vs_predicted = None
+    if top_item:
+        actual_vs_predicted = analytics.generate_actual_vs_predicted_chart(
+            item_id=top_item['item'], days=14
+        )
+    
+    context = UserRoleManager.get_context_for_user(request.user)
+    context.update({
+        'sales_trend': sales_trend,
+        'inventory_performance': inventory_performance,
+        'ai_performance': ai_performance,
+        'actual_vs_predicted': actual_vs_predicted,
+    })
+    
+    return render(request, 'inventory/analytics_dashboard.html', context)
+
+
+@manager_or_admin_required
+def item_analytics(request, item_id):
+    """Detailed analytics for a specific item"""
+    from .analytics import analytics
+    
+    item = get_object_or_404(Item, id=item_id)
+    
+    # Generate item-specific charts
+    actual_vs_predicted = analytics.generate_actual_vs_predicted_chart(
+        item_id=item_id, days=14
+    )
+    
+    # Get item transaction history
+    transactions = Transaction.objects.filter(item=item).order_by('-timestamp')[:20]
+    
+    # Calculate item statistics
+    total_sales = Transaction.objects.filter(
+        item=item, 
+        transaction_type='SALE',
+        payment_status='PAID'
+    ).aggregate(
+        total_quantity=Sum('quantity'),
+        total_amount=Sum('total_amount')
+    )
+    
+    context = UserRoleManager.get_context_for_user(request.user)
+    context.update({
+        'item': item,
+        'actual_vs_predicted': actual_vs_predicted,
+        'transactions': transactions,
+        'total_sales': total_sales,
+    })
+    
+    return render(request, 'inventory/item_analytics.html', context)
+
+
+@manager_or_admin_required
 def transaction_export_csv(request):
     """View AI demand forecast for a specific item"""
     item = get_object_or_404(Item, id=item_id)
