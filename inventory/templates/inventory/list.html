@@ -142,6 +142,7 @@
                         <option value="low-stock" {% if request.GET.status == 'low-stock' %}selected{% endif %}>Low Stock</option>
                         <option value="out-of-stock" {% if request.GET.status == 'out-of-stock' %}selected{% endif %}>Out of Stock</option>
                         <option value="reorder-suggested" {% if request.GET.status == 'reorder-suggested' %}selected{% endif %}>Reorder Suggested</option>
+                        <option value="ai-critical" {% if request.GET.status == 'ai-critical' %}selected{% endif %}>🤖 AI Critical</option>
                     </select>
                     <button type="submit" class="btn btn-outline-primary">
                         <i class="bi bi-search"></i>
@@ -149,6 +150,46 @@
                 </form>
             </div>
         </div>
+
+        <!-- AI Notification Summary -->
+        {% if notification_summary and notification_summary.total_alerts > 0 %}
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="alert alert-info border-0 shadow-sm">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0">
+                            <i class="bi bi-robot fs-4 text-primary"></i>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="alert-heading mb-1">
+                                <strong>AI Inventory Analysis</strong>
+                            </h6>
+                            <p class="mb-2">
+                                {% if notification_summary.critical_count > 0 %}
+                                    <span class="badge bg-danger me-2">{{ notification_summary.critical_count }} Critical</span>
+                                {% endif %}
+                                {% if notification_summary.high_count > 0 %}
+                                    <span class="badge bg-warning text-dark me-2">{{ notification_summary.high_count }} High Priority</span>
+                                {% endif %}
+                                <span class="badge bg-primary me-2">{{ notification_summary.ai_powered_count }} AI Monitored</span>
+                                <span class="badge bg-secondary">{{ notification_summary.ai_coverage|floatformat:0 }}% Coverage</span>
+                            </p>
+                            <div class="d-flex gap-2 flex-wrap">
+                                {% if notification_summary.critical_count > 0 %}
+                                    <a href="?status=ai-critical" class="btn btn-danger btn-sm">
+                                        <i class="bi bi-exclamation-triangle me-1"></i>View Critical Items
+                                    </a>
+                                {% endif %}
+                                <a href="{% url 'inventory:reorder_suggestions' %}" class="btn btn-primary btn-sm">
+                                    <i class="bi bi-robot me-1"></i>Full AI Analysis
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
 
         <!-- Inventory Statistics -->
         <div class="row mb-4">

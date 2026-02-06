@@ -178,7 +178,11 @@ def reject_user(request, user_id):
 
 @approved_user_required
 def dashboard(request):
-    """Main dashboard view with role-based content"""
+    """Main dashboard view with role-based content and AI notifications"""
+    # Add AI-powered notifications to dashboard
+    from inventory.notifications import notification_manager
+    notification_manager.add_dashboard_notifications(request)
+    
     # Get user role and context
     role = UserRoleManager.get_user_role(request.user)
     context = UserRoleManager.get_context_for_user(request.user)
@@ -198,6 +202,9 @@ def dashboard(request):
     # Get recent items (last 5 added)
     recent_items = Item.objects.order_by('-id')[:5]
     
+    # Get AI notification summary for dashboard widgets
+    notification_summary = notification_manager.get_notification_summary()
+    
     # Update context with dashboard data
     context.update({
         "user": request.user,
@@ -207,6 +214,7 @@ def dashboard(request):
         "total_value": total_value,
         "recent_items": recent_items,
         "low_stock_items_list": low_stock_items[:5],  # Renamed to avoid conflict
+        "notification_summary": notification_summary,  # AI notification data
     })
     
     # Add admin-specific data

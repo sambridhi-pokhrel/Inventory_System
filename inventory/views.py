@@ -22,7 +22,12 @@ from users.utils import UserRoleManager
 
 @approved_user_required
 def item_list(request):
-    """List all inventory items with search, filter, and reorder suggestions"""
+    """List all inventory items with search, filter, and AI-powered notifications"""
+    from .notifications import notification_manager
+    
+    # Add smart notifications based on AI predictions
+    notification_manager.add_inventory_page_notifications(request)
+    
     items = Item.objects.all()
     
     # Handle search
@@ -41,12 +46,17 @@ def item_list(request):
     elif filter_type == 'in-stock':
         items = items.filter(quantity__gt=F('reorder_level'))
     elif filter_type == 'reorder-suggested':
-        # Filter items that need reordering based on predictive logic
+        # Filter items that need reordering based on AI logic
         reorder_items = []
         for item in items:
             if item.needs_reorder:
                 reorder_items.append(item.id)
         items = items.filter(id__in=reorder_items)
+    elif filter_type == 'ai-critical':
+        # New filter: AI Critical alerts
+        ai_alerts = notification_manager.get_ai_stock_alerts()
+        critical_item_ids = [a['item'].id for a in ai_alerts if a['urgency'] == 'CRITICAL']
+        items = items.filter(id__in=critical_item_ids)
 
     # Calculate summary statistics
     total_items = Item.objects.count()
@@ -54,13 +64,16 @@ def item_list(request):
     out_of_stock_count = Item.objects.filter(quantity=0).count()
     in_stock_count = Item.objects.filter(quantity__gt=F('reorder_level')).count()
     
-    # Calculate reorder suggestions
+    # Get AI-powered reorder suggestions
     reorder_suggestions = []
     for item in Item.objects.all():
         if item.needs_reorder:
             reorder_suggestions.append(item)
     
     reorder_count = len(reorder_suggestions)
+    
+    # Get notification summary for template
+    notification_summary = notification_manager.get_notification_summary()
 
     # Get role context using utility
     context = UserRoleManager.get_context_for_user(request.user)
@@ -74,6 +87,7 @@ def item_list(request):
         "in_stock_count": in_stock_count,
         "reorder_count": reorder_count,
         "reorder_suggestions": reorder_suggestions[:5],  # Show top 5 in sidebar
+        "notification_summary": notification_summary,  # AI notification data
     })
 
     return render(request, "inventory/list.html", context)
@@ -142,47 +156,80 @@ def reorder_suggestions(request):
 
 @manager_or_admin_required
 def export_csv(request):
-    """Export inventory data to CSV with reorder information"""
+    """Export inventory data to CSV with AI prediction insights"""
     response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename="inventory_report.csv"'
+    response['Content-Disposition'] = 'attachment; filename="inventory_ai_report.csv"'
     
     writer = csv.writer(response)
     
-    # Write header
+    # Write header with AI prediction columns
     writer.writerow([
-        'Item Name', 'Quantity', 'Price (Rs.)', 'Total Value (Rs.)', 
-        'Stock Status', 'Reorder Level', 'Lead Time (Days)', 
-        'Daily Usage', 'Reorder Suggested', 'Suggested Quantity'
+        'Item Name', 'Current Stock', 'Unit Price (Rs.)', 'Stock Value (Rs.)', 
+        'Stock Status', 'Reorder Level', 'Lead Time (Days)',
+        # AI Prediction Columns
+        'AI Prediction Available', 'Predicted Demand (7 days)', 'AI Accuracy (%)',
+        'AI Reorder Recommended', 'AI Urgency Level', 'AI Suggested Quantity',
+        'Days Until Stockout', 'Shortage Risk (Units)'
     ])
     
-    # Write data
+    # Write data with AI insights
     for item in Item.objects.all():
-        total_value = float(item.price) * item.quantity
-        daily_usage = item.get_average_daily_usage()
+        stock_value = float(item.price) * item.quantity
+        
+        # Get AI prediction data
+        ai_reorder_info = item.ai_reorder_info
+        forecast_result = item.get_ai_demand_forecast(days=7)
+        
+        # Extract AI data safely
+        ai_available = ai_reorder_info.get('ai_powered', False)
+        predicted_demand = forecast_result.get('summary', {}).get('total_predicted_demand', 'N/A') if forecast_result.get('success') else 'N/A'
+        ai_accuracy = ai_reorder_info.get('model_accuracy', 'N/A') if ai_available else 'N/A'
+        ai_reorder = 'Yes' if ai_reorder_info.get('needs_reorder', False) else 'No'
+        ai_urgency = ai_reorder_info.get('urgency', 'N/A') if ai_available else 'N/A'
+        ai_suggested_qty = ai_reorder_info.get('suggested_quantity', 0) if ai_available else 0
+        days_until_stockout = ai_reorder_info.get('days_until_stockout', 'N/A') if ai_available else 'N/A'
+        shortage_risk = ai_reorder_info.get('shortage_risk', 0) if ai_available else 0
+        
         writer.writerow([
             item.name,
             item.quantity,
             f"{item.price:.2f}",
-            f"{total_value:.2f}",
+            f"{stock_value:.2f}",
             item.stock_status.replace('-', ' ').title(),
             item.reorder_level,
             item.lead_time_days,
-            f"{daily_usage:.2f}",
-            'Yes' if item.needs_reorder else 'No',
-            item.suggested_reorder_quantity if item.needs_reorder else 0,
+            # AI Prediction Data
+            'Yes' if ai_available else 'No',
+            f"{predicted_demand:.1f}" if isinstance(predicted_demand, (int, float)) else predicted_demand,
+            ai_accuracy,
+            ai_reorder,
+            ai_urgency,
+            ai_suggested_qty,
+            f"{days_until_stockout:.1f}" if isinstance(days_until_stockout, (int, float)) and days_until_stockout != float('inf') else days_until_stockout,
+            f"{shortage_risk:.1f}" if isinstance(shortage_risk, (int, float)) else shortage_risk
         ])
     
-    # Write summary
+    # Write AI system summary
     writer.writerow([])  # Empty row
-    writer.writerow(['SUMMARY'])
-    writer.writerow(['Total Items', Item.objects.count()])
-    writer.writerow(['In Stock Items', Item.objects.filter(quantity__gt=F('reorder_level')).count()])
-    writer.writerow(['Low Stock Items', Item.objects.filter(quantity__lte=F('reorder_level'), quantity__gt=0).count()])
-    writer.writerow(['Out of Stock Items', Item.objects.filter(quantity=0).count()])
+    writer.writerow(['AI SYSTEM SUMMARY'])
     
-    # Calculate reorder suggestions
-    reorder_count = sum(1 for item in Item.objects.all() if item.needs_reorder)
-    writer.writerow(['Items Needing Reorder', reorder_count])
+    # Calculate AI coverage and performance
+    total_items = Item.objects.count()
+    items_with_ai = sum(1 for item in Item.objects.all() if item.ai_reorder_info.get('ai_powered', False))
+    ai_coverage = (items_with_ai / total_items * 100) if total_items > 0 else 0
+    
+    # Get AI reorder suggestions
+    from .ml_predictor import get_ai_reorder_suggestions
+    ai_suggestions = get_ai_reorder_suggestions()
+    critical_alerts = sum(1 for s in ai_suggestions if s['recommendation'].get('urgency') == 'CRITICAL')
+    high_alerts = sum(1 for s in ai_suggestions if s['recommendation'].get('urgency') == 'HIGH')
+    
+    writer.writerow(['Total Items', total_items])
+    writer.writerow(['Items with AI Models', items_with_ai])
+    writer.writerow(['AI Coverage (%)', f"{ai_coverage:.1f}%"])
+    writer.writerow(['AI Reorder Suggestions', len(ai_suggestions)])
+    writer.writerow(['Critical AI Alerts', critical_alerts])
+    writer.writerow(['High Priority AI Alerts', high_alerts])
     
     # Calculate total inventory value
     total_value = sum(float(item.price) * item.quantity for item in Item.objects.all())
@@ -672,36 +719,29 @@ def item_analytics(request, item_id):
 
 @manager_or_admin_required
 def transaction_export_csv(request):
-    """View AI demand forecast for a specific item"""
-    item = get_object_or_404(Item, id=item_id)
-    
-    # Get AI forecast
-    forecast_result = item.get_ai_demand_forecast(days=14)  # 2 weeks forecast
-    reorder_info = item.ai_reorder_info
-    
-    context = UserRoleManager.get_context_for_user(request.user)
-    context.update({
-        'item': item,
-        'forecast_result': forecast_result,
-        'reorder_info': reorder_info,
-    })
-    
-    return render(request, 'inventory/ai_demand_forecast.html', context)
-    """Export transaction data to CSV with payment information"""
+    """Export transaction data to CSV with AI prediction insights"""
     response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename="transactions_report.csv"'
+    response['Content-Disposition'] = 'attachment; filename="transactions_ai_report.csv"'
     
     writer = csv.writer(response)
     
-    # Write header
+    # Write header with AI prediction columns
     writer.writerow([
         'Date', 'Time', 'Item', 'Type', 'Quantity', 
         'Unit Price (Rs.)', 'Total Amount (Rs.)', 'Payment Status',
-        'Payment Method', 'Payment Reference', 'Performed By', 'Notes'
+        'Payment Method', 'Payment Reference', 'Performed By', 'Notes',
+        # AI Prediction Columns
+        'Item AI Status', 'Current Stock After', 'AI Reorder Needed', 'AI Urgency'
     ])
     
-    # Write transaction data
+    # Write transaction data with AI insights
     for transaction in Transaction.objects.select_related('item', 'performed_by').all():
+        # Get AI insights for the item
+        ai_reorder_info = transaction.item.ai_reorder_info
+        ai_powered = ai_reorder_info.get('ai_powered', False)
+        ai_reorder_needed = 'Yes' if ai_reorder_info.get('needs_reorder', False) else 'No'
+        ai_urgency = ai_reorder_info.get('urgency', 'N/A') if ai_powered else 'N/A'
+        
         writer.writerow([
             transaction.timestamp.strftime('%Y-%m-%d'),
             transaction.timestamp.strftime('%H:%M:%S'),
@@ -714,12 +754,17 @@ def transaction_export_csv(request):
             transaction.payment_method,
             transaction.payment_reference or '',
             transaction.performed_by.get_full_name() or transaction.performed_by.username,
-            transaction.notes or ''
+            transaction.notes or '',
+            # AI Data
+            'AI-Enabled' if ai_powered else 'Basic Rules',
+            transaction.item.quantity,
+            ai_reorder_needed,
+            ai_urgency
         ])
     
-    # Write summary
+    # Write AI-enhanced summary
     writer.writerow([])
-    writer.writerow(['SUMMARY'])
+    writer.writerow(['AI-ENHANCED TRANSACTION SUMMARY'])
     
     total_sales = Transaction.objects.filter(
         transaction_type='SALE', 
@@ -734,10 +779,20 @@ def transaction_export_csv(request):
         payment_status='PENDING'
     ).aggregate(total=Sum('total_amount'))['total'] or 0
     
+    # AI insights
+    from .ml_predictor import get_ai_reorder_suggestions
+    ai_suggestions = get_ai_reorder_suggestions()
+    items_needing_reorder = len(ai_suggestions)
+    critical_items = sum(1 for s in ai_suggestions if s['recommendation'].get('urgency') == 'CRITICAL')
+    
     writer.writerow(['Total Sales (Rs.)', f"{total_sales:.2f}"])
     writer.writerow(['Total Purchases (Rs.)', f"{total_purchases:.2f}"])
     writer.writerow(['Pending Payments (Rs.)', f"{pending_amount:.2f}"])
     writer.writerow(['Net Amount (Rs.)', f"{total_sales - total_purchases:.2f}"])
     writer.writerow(['Total Transactions', Transaction.objects.count()])
+    writer.writerow([''])
+    writer.writerow(['AI REORDER INSIGHTS'])
+    writer.writerow(['Items Needing Reorder (AI)', items_needing_reorder])
+    writer.writerow(['Critical Stock Alerts', critical_items])
     
     return response
