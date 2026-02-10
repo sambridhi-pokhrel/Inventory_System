@@ -113,9 +113,16 @@ def user_management(request):
     pending_users = UserProfile.objects.filter(approval_status='pending')
     approved_users = UserProfile.objects.filter(approval_status='approved')
     
+    # Calculate statistics
+    from django.contrib.auth.models import User
+    total_users = User.objects.filter(is_active=True).count()
+    admin_users = User.objects.filter(is_superuser=True)
+    
     context = {
         'pending_users': pending_users,
         'approved_users': approved_users,
+        'total_users': total_users,
+        'admin_users': admin_users,
     }
     context.update(UserRoleManager.get_context_for_user(request.user))
     return render(request, 'users/user_management.html', context)
