@@ -348,6 +348,7 @@ def item_delete(request, item_id):
 # ==================== TRANSACTION VIEWS ====================
 
 @approved_user_required
+@approved_user_required
 def transaction_list(request):
     """List all transactions with filtering, pagination, and payment status"""
     transactions = Transaction.objects.select_related('item', 'performed_by').all()
@@ -378,6 +379,15 @@ def transaction_list(request):
         except ValueError:
             pass
     
+    # Separate sales and purchases for display
+    recent_sales = Transaction.objects.filter(
+        transaction_type='SALE'
+    ).select_related('item', 'performed_by').order_by('-timestamp')[:10]
+    
+    recent_purchases = Transaction.objects.filter(
+        transaction_type='PURCHASE'
+    ).select_related('item', 'performed_by').order_by('-timestamp')[:10]
+    
     # Pagination
     paginator = Paginator(transactions, 20)
     page_number = request.GET.get('page')
@@ -400,6 +410,8 @@ def transaction_list(request):
     context = UserRoleManager.get_context_for_user(request.user)
     context.update({
         'transactions': page_obj,
+        'recent_sales': recent_sales,
+        'recent_purchases': recent_purchases,
         'total_sales': total_sales,
         'total_purchases': total_purchases,
         'pending_payments': pending_payments,

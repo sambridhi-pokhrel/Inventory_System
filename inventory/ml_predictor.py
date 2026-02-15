@@ -5,7 +5,6 @@ AI-Based Inventory Demand Forecasting Module
 This module implements machine learning-based demand forecasting for inventory management.
 Uses scikit-learn to train models on historical sales data and predict future demand.
 
-Academic FYP Implementation - Real AI, not hard-coded rules.
 """
 
 import numpy as np
