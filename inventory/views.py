@@ -240,13 +240,14 @@ def export_csv(request):
 
 @manager_or_admin_required
 def item_add(request):
-    """Add new inventory item with reorder settings"""
+    """Add new inventory item with reorder settings and image upload"""
     if request.method == "POST":
         name = request.POST.get("name")
         quantity = request.POST.get("quantity")
         price = request.POST.get("price")
         reorder_level = request.POST.get("reorder_level", 10)
         lead_time_days = request.POST.get("lead_time_days", 7)
+        image = request.FILES.get("image")  # Get uploaded image
 
         # Validate input
         if not all([name, quantity, price]):
@@ -263,12 +264,14 @@ def item_add(request):
                 messages.error(request, "All values must be non-negative (lead time must be at least 1 day).")
                 return render(request, "inventory/add.html")
             
+            # Create item with image
             Item.objects.create(
                 name=name,
                 quantity=quantity,
                 price=price,
                 reorder_level=reorder_level,
-                lead_time_days=lead_time_days
+                lead_time_days=lead_time_days,
+                image=image  # Save uploaded image
             )
             messages.success(request, f"Item '{name}' has been added successfully.")
             return redirect("inventory:item_list")
@@ -283,7 +286,7 @@ def item_add(request):
 
 @manager_or_admin_required
 def item_edit(request, item_id):
-    """Edit inventory item with reorder settings"""
+    """Edit inventory item with reorder settings and image upload"""
     item = get_object_or_404(Item, id=item_id)
 
     if request.method == "POST":
@@ -292,6 +295,7 @@ def item_edit(request, item_id):
         price = request.POST.get("price")
         reorder_level = request.POST.get("reorder_level")
         lead_time_days = request.POST.get("lead_time_days")
+        image = request.FILES.get("image")  # Get uploaded image
 
         # Validate input
         if not all([name, quantity, price, reorder_level, lead_time_days]):
@@ -317,6 +321,11 @@ def item_edit(request, item_id):
             item.price = price
             item.reorder_level = reorder_level
             item.lead_time_days = lead_time_days
+            
+            # Update image if new one is uploaded
+            if image:
+                item.image = image
+            
             item.save()
             
             messages.success(request, f"Item '{name}' has been updated successfully.")

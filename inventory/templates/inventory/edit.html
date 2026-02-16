@@ -47,8 +47,30 @@
                         </div>
                     {% endif %}
 
-                    <form method="post">
+                    <form method="post" enctype="multipart/form-data">
                         {% csrf_token %}
+                        
+                        <!-- Current Image Display -->
+                        {% if item.image %}
+                        <div class="mb-4">
+                            <label class="form-label">Current Product Image</label>
+                            <div class="text-center p-3 bg-light rounded">
+                                <img src="{{ item.image.url }}" alt="{{ item.name }}" 
+                                     style="max-width: 300px; max-height: 300px; object-fit: contain; border-radius: 10px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);">
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        <!-- Product Image Upload -->
+                        <div class="mb-4">
+                            <label for="image" class="form-label">
+                                <i class="bi bi-image me-1"></i> Product Image {% if item.image %}(Change Image){% else %}(Optional){% endif %}
+                            </label>
+                            <input type="file" class="form-control" id="image" name="image" 
+                                   accept="image/*">
+                            <small class="text-muted">Upload a new product image to replace the current one</small>
+                        </div>
+                        
                         <div class="mb-3">
                             <label for="name" class="form-label">
                                 <i class="bi bi-tag me-1"></i> Item Name

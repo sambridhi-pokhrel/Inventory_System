@@ -12,9 +12,23 @@ class Item(models.Model):
     price = models.DecimalField(max_digits=10, decimal_places=2)
     reorder_level = models.IntegerField(default=10, help_text="Minimum stock level before reorder suggestion")
     lead_time_days = models.IntegerField(default=7, help_text="Days required to restock this item")
+    # Product image field - stores uploaded images in media/products/ directory
+    image = models.ImageField(
+        upload_to='products/',
+        blank=True,
+        null=True,
+        help_text="Upload product image (optional)"
+    )
 
     def __str__(self):
         return self.name
+    
+    def get_image_url(self):
+        """Return image URL or placeholder if no image exists"""
+        if self.image:
+            return self.image.url
+        # Return placeholder image URL
+        return '/static/images/no-image-placeholder.svg'
     
     @property
     def is_low_stock(self):

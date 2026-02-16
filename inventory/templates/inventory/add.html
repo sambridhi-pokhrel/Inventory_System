@@ -37,8 +37,19 @@
                     <h5 class="mb-0"><i class="bi bi-box me-2"></i> Item Details</h5>
                 </div>
                 <div class="card-body p-4">
-                    <form method="post">
+                    <form method="post" enctype="multipart/form-data">
                         {% csrf_token %}
+                        
+                        <!-- Product Image Upload -->
+                        <div class="mb-4">
+                            <label for="image" class="form-label">
+                                <i class="bi bi-image me-1"></i> Product Image (Optional)
+                            </label>
+                            <input type="file" class="form-control" id="image" name="image" 
+                                   accept="image/*">
+                            <small class="text-muted">Upload a product image (JPG, PNG, etc.)</small>
+                        </div>
+                        
                         <div class="mb-3">
                             <label for="name" class="form-label">
                                 <i class="bi bi-tag me-1"></i> Item Name

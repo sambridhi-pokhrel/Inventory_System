@@ -558,6 +558,37 @@ body {
     background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-light) 100%) !important;
 }
 
+/* ==================== PRODUCT IMAGES ==================== */
+.product-thumbnail {
+    width: 75px;
+    height: 75px;
+    object-fit: cover;
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
+    transition: var(--transition);
+}
+
+.product-thumbnail:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Inventory Table Refinements */
+.inventory-table tbody tr {
+    height: 90px;
+}
+
+.inventory-table tbody td {
+    padding: var(--spacing-lg) var(--spacing-md);
+    vertical-align: middle;
+}
+
+.inventory-table thead th {
+    padding: var(--spacing-md);
+    font-size: 0.8125rem;
+}
+
 /* ==================== SPACING IMPROVEMENTS ==================== */
 .container {
     padding-top: var(--spacing-lg);

@@ -247,39 +247,42 @@
             <div class="card-body p-0">
                 {% if items %}
                     <div class="table-responsive">
-                        <table class="table table-hover mb-0">
+                        <table class="table table-hover mb-0 inventory-table">
                             <thead>
                                 <tr>
-                                    <th>Item Name</th>
-                                    <th>Current Stock</th>
+                                    <th style="width: 100px;">Product</th>
+                                    <th>Item Details</th>
+                                    <th>Stock</th>
                                     <th>Price</th>
-                                    <th>Total Value</th>
                                     <th>Status</th>
                                     <th>Reorder Info</th>
-                                    <th>Actions</th>
+                                    <th style="width: 120px;">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for item in items %}
                                     <tr>
-                                        <td>
-                                            <div class="d-flex align-items-center">
-                                                <i class="bi bi-box me-2 text-primary"></i>
-                                                <strong>{{ item.name }}</strong>
-                                            </div>
+                                        <td class="align-middle">
+                                            <img src="{% if item.image %}{{ item.image.url }}{% else %}/static/images/no-image-placeholder.svg{% endif %}" 
+                                                 alt="{{ item.name }}" 
+                                                 class="product-thumbnail">
                                         </td>
-                                        <td>
-                                            <span class="fw-bold">{{ item.quantity }}</span>
-                                            <br>
-                                            <small class="text-muted">Reorder at {{ item.reorder_level }}</small>
+                                        <td class="align-middle">
+                                            <div class="fw-bold text-dark mb-1">{{ item.name }}</div>
+                                            <small class="text-muted">
+                                                <i class="bi bi-box-seam me-1"></i>
+                                                Total Value: {{ item.quantity|mul:item.price|rupees }}
+                                            </small>
                                         </td>
-                                        <td>
-                                            <span class="text-success fw-bold">{{ item.price|rupees }}</span>
+                                        <td class="align-middle">
+                                            <div class="fw-bold text-dark">{{ item.quantity }}</div>
+                                            <small class="text-muted">Reorder: {{ item.reorder_level }}</small>
                                         </td>
-                                        <td>
-                                            <span class="text-info fw-bold">{{ item.quantity|mul:item.price|rupees }}</span>
+                                        <td class="align-middle">
+                                            <div class="fw-bold text-success">{{ item.price|rupees }}</div>
+                                            <small class="text-muted">per unit</small>
                                         </td>
-                                        <td>
+                                        <td class="align-middle">
                                             <span class="stock-status {{ item.stock_status }}">
                                                 {% if item.stock_status == 'in-stock' %}
                                                     <i class="bi bi-check-circle"></i>
@@ -293,24 +296,26 @@
                                                 {% endif %}
                                             </span>
                                         </td>
-                                        <td>
+                                        <td class="align-middle">
                                             {% if item.needs_reorder %}
-                                                <span class="badge bg-warning text-dark">
+                                                <span class="badge bg-warning text-dark mb-1">
                                                     <i class="bi bi-arrow-repeat me-1"></i>
                                                     Order {{ item.suggested_reorder_quantity }}
                                                 </span>
-                                                <br>
-                                                <small class="text-muted">{{ item.get_average_daily_usage|floatformat:1 }}/day usage</small>
+                                                <div>
+                                                    <small class="text-muted">{{ item.get_average_daily_usage|floatformat:1 }}/day</small>
+                                                </div>
                                             {% else %}
-                                                <span class="badge bg-success">
+                                                <span class="badge bg-success mb-1">
                                                     <i class="bi bi-check-circle me-1"></i>
                                                     Well Stocked
                                                 </span>
-                                                <br>
-                                                <small class="text-muted">{{ item.lead_time_days }} days lead time</small>
+                                                <div>
+                                                    <small class="text-muted">{{ item.lead_time_days }}d lead</small>
+                                                </div>
                                             {% endif %}
                                         </td>
-                                        <td>
+                                        <td class="align-middle">
                                             <div class="btn-group btn-group-sm" role="group">
                                                 {% if user|can_edit_items %}
                                                     <a href="{% url 'inventory:item_edit' item.id %}" 
