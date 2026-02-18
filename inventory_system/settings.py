@@ -96,8 +96,8 @@ EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
 # Unsplash API Configuration for automatic product image fetching
 # Get your free API key from: https://unsplash.com/developers
-# Note: This is a demo access key with limited requests (50/hour)
-# For production, register for your own API key
+# Note: If no API key is configured, system uses Lorem Picsum (free placeholder images)
+# Lorem Picsum: https://picsum.photos/ - No API key needed, works automatically
 UNSPLASH_ACCESS_KEY = 'YOUR_UNSPLASH_ACCESS_KEY_HERE'
 UNSPLASH_API_URL = 'https://api.unsplash.com/search/photos'
 

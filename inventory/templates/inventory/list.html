@@ -324,11 +324,14 @@
                                                     </a>
                                                 {% endif %}
                                                 {% if user|can_delete_items %}
-                                                    <a href="{% url 'inventory:item_delete' item.id %}" 
-                                                       class="btn btn-outline-danger" title="Delete"
-                                                       onclick="return confirm('Are you sure you want to delete {{ item.name }}?')">
-                                                        <i class="bi bi-trash"></i>
-                                                    </a>
+                                                    <form method="post" action="{% url 'inventory:item_delete' item.id %}" 
+                                                          style="display: inline;"
+                                                          onsubmit="return confirm('Are you sure you want to delete {{ item.name }}?')">
+                                                        {% csrf_token %}
+                                                        <button type="submit" class="btn btn-outline-danger btn-sm" title="Delete">
+                                                            <i class="bi bi-trash"></i>
+                                                        </button>
+                                                    </form>
                                                 {% endif %}
                                                 {% if not user|can_edit_items and not user|can_delete_items %}
                                                     <span class="badge bg-secondary">View Only</span>

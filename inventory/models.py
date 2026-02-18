@@ -5,6 +5,12 @@ from django.db import transaction
 from decimal import Decimal
 from django.utils import timezone
 from datetime import datetime, timedelta
+from django.core.files.base import ContentFile
+import requests
+import logging
+
+# Setup logging for debugging
+logger = logging.getLogger(__name__)
 
 class Item(models.Model):
     name = models.CharField(max_length=100)
@@ -29,6 +35,202 @@ class Item(models.Model):
             return self.image.url
         # Return placeholder image URL
         return '/static/images/no-image-placeholder.svg'
+    
+    def _fetch_product_image(self):
+        """
+        Automatically fetch product image from Unsplash API or Lorem Picsum
+        
+        Academic Explanation (for Viva):
+        =====================================
+        This method implements automatic image fetching to enhance user experience.
+        When a product is created without an image, the system automatically:
+        1. First tries Unsplash API (if configured) for relevant images
+        2. Falls back to Lorem Picsum (free, no API key needed) for placeholder
+        3. Downloads the image
+        4. Saves it to the Django media directory
+        5. Assigns it to the ImageField
+        
+        Error Handling:
+        - If API key is not configured → Uses Lorem Picsum
+        - If API request fails → Uses Lorem Picsum
+        - If no images found → Uses Lorem Picsum
+        - If download fails → Returns None (uses placeholder SVG)
+        
+        This ensures the system remains stable even without internet connectivity.
+        """
+        from django.conf import settings
+        
+        # Check if Unsplash API is configured
+        api_key = getattr(settings, 'UNSPLASH_ACCESS_KEY', None)
+        use_unsplash = api_key and api_key != 'YOUR_UNSPLASH_ACCESS_KEY_HERE'
+        
+        try:
+            if use_unsplash:
+                # Try Unsplash API first (if configured)
+                logger.info(f"Attempting Unsplash API for: {self.name}")
+                result = self._fetch_from_unsplash(api_key)
+                if result:
+                    return result
+                logger.info("Unsplash failed, falling back to Lorem Picsum")
+            
+            # Fallback to Lorem Picsum (no API key needed)
+            logger.info(f"Fetching placeholder image for: {self.name}")
+            return self._fetch_from_lorem_picsum()
+            
+        except Exception as e:
+            logger.error(f"Error fetching image: {str(e)}")
+            return None
+    
+    def _fetch_from_unsplash(self, api_key):
+        """Fetch image from Unsplash API"""
+        try:
+            from django.conf import settings
+            api_url = getattr(settings, 'UNSPLASH_API_URL', 'https://api.unsplash.com/search/photos')
+            
+            params = {
+                'query': self.name,
+                'per_page': 1,
+                'orientation': 'squarish',
+                'client_id': api_key
+            }
+            
+            response = requests.get(api_url, params=params, timeout=10)
+            
+            if response.status_code != 200:
+                logger.warning(f"Unsplash API returned status {response.status_code}")
+                return None
+            
+            data = response.json()
+            
+            if not data.get('results') or len(data['results']) == 0:
+                logger.info(f"No images found on Unsplash for: {self.name}")
+                return None
+            
+            first_image = data['results'][0]
+            image_url = first_image['urls']['small']
+            
+            logger.info(f"Found Unsplash image: {image_url}")
+            
+            image_response = requests.get(image_url, timeout=10)
+            
+            if image_response.status_code != 200:
+                return None
+            
+            clean_name = self.name.lower().replace(' ', '_')
+            clean_name = ''.join(c for c in clean_name if c.isalnum() or c == '_')
+            clean_name = clean_name[:50]
+            filename = f"{clean_name}_unsplash.jpg"
+            
+            image_content = ContentFile(image_response.content)
+            
+            logger.info(f"Successfully fetched from Unsplash: {self.name}")
+            return image_content, filename
+            
+        except Exception as e:
+            logger.warning(f"Unsplash fetch failed: {str(e)}")
+            return None
+    
+    def _fetch_from_lorem_picsum(self):
+        """
+        Fetch placeholder image from Lorem Picsum (no API key needed)
+        
+        Lorem Picsum provides free placeholder images without authentication.
+        URL format: https://picsum.photos/400/400
+        - Returns a random high-quality photo
+        - 400x400 pixels (square, good for products)
+        - No API key required
+        - Free and reliable
+        """
+        try:
+            # Lorem Picsum URL for 400x400 square image
+            image_url = 'https://picsum.photos/400/400'
+            
+            logger.info(f"Fetching from Lorem Picsum for: {self.name}")
+            
+            # Download the image
+            response = requests.get(image_url, timeout=10)
+            
+            if response.status_code != 200:
+                logger.warning(f"Lorem Picsum returned status {response.status_code}")
+                return None
+            
+            # Generate filename
+            clean_name = self.name.lower().replace(' ', '_')
+            clean_name = ''.join(c for c in clean_name if c.isalnum() or c == '_')
+            clean_name = clean_name[:50]
+            filename = f"{clean_name}_placeholder.jpg"
+            
+            # Create ContentFile
+            image_content = ContentFile(response.content)
+            
+            logger.info(f"Successfully fetched placeholder for: {self.name}")
+            return image_content, filename
+            
+        except requests.exceptions.Timeout:
+            logger.warning(f"Timeout while fetching placeholder for: {self.name}")
+            return None
+            
+        except requests.exceptions.RequestException as e:
+            logger.warning(f"Network error while fetching placeholder: {str(e)}")
+            return None
+            
+        except Exception as e:
+            logger.error(f"Unexpected error while fetching placeholder: {str(e)}")
+            return None
+    
+    def save(self, *args, **kwargs):
+        """
+        Override save method to automatically fetch product image
+        
+        Academic Explanation (for Viva):
+        =====================================
+        This is a Django model override that adds custom logic before saving.
+        
+        Logic Flow:
+        1. Check if this is a new item (pk is None) OR image field is empty
+        2. If no image exists, attempt to fetch one automatically
+        3. If fetch succeeds, assign the image to the ImageField
+        4. If fetch fails, continue without image (uses placeholder in templates)
+        5. Call parent save() to complete the database operation
+        
+        Key Points:
+        - Manual uploads are ALWAYS prioritized (checked first)
+        - Auto-fetch only happens when image field is empty
+        - System never breaks if API fails (graceful degradation)
+        - Works for both new items and updates
+        
+        Why in save() method?
+        - Centralized logic (works everywhere Item is saved)
+        - Automatic (no need to remember to call it)
+        - Clean code (separation of concerns)
+        - Django best practice (model handles its own data)
+        """
+        
+        # Check if image field is empty (no manual upload)
+        # Note: We check if the field has no file, not just if it's None
+        if not self.image or not self.image.name:
+            logger.info(f"No image provided for '{self.name}'. Attempting auto-fetch...")
+            
+            # Attempt to fetch image from Unsplash API
+            result = self._fetch_product_image()
+            
+            if result:
+                # Successfully fetched image
+                image_content, filename = result
+                
+                # Save the fetched image to the ImageField
+                # save=False prevents recursive save() calls
+                self.image.save(filename, image_content, save=False)
+                logger.info(f"Auto-fetched image saved for: {self.name}")
+            else:
+                # Fetch failed - will use placeholder in templates
+                logger.info(f"Using placeholder image for: {self.name}")
+        else:
+            # Manual image was uploaded - use it
+            logger.info(f"Using manually uploaded image for: {self.name}")
+        
+        # Call parent save() to complete the database operation
+        super().save(*args, **kwargs)
     
     @property
     def is_low_stock(self):

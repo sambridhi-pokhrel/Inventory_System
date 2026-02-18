@@ -264,41 +264,24 @@ def item_add(request):
                 messages.error(request, "All values must be non-negative (lead time must be at least 1 day).")
                 return render(request, "inventory/add.html")
             
-            # Create item with or without image
+            # Create item - automatic image fetching happens in model's save() method
+            # If user uploaded image: uses uploaded image
+            # If no image uploaded: automatically fetches from Unsplash API
+            # If API fails: uses placeholder (system remains stable)
             item = Item.objects.create(
                 name=name,
                 quantity=quantity,
                 price=price,
                 reorder_level=reorder_level,
                 lead_time_days=lead_time_days,
-                image=image  # Save uploaded image (if provided)
+                image=image  # Can be None - model handles it automatically
             )
             
-            # Automatic Image Fetching Logic (Academic Note for Viva):
-            # If user did NOT upload an image, automatically fetch one from Unsplash API
-            # This enhances user experience by providing visual product representation
-            # System remains stable even if API fails (graceful degradation)
-            if not image:
-                from .image_fetcher import fetch_and_save_product_image
-                try:
-                    # Attempt to fetch image based on product name
-                    success = fetch_and_save_product_image(item, name)
-                    if success:
-                        messages.success(
-                            request, 
-                            f"Item '{name}' has been added successfully with auto-fetched image."
-                        )
-                    else:
-                        messages.success(
-                            request, 
-                            f"Item '{name}' has been added successfully. (Auto-fetch unavailable, using placeholder)"
-                        )
-                except Exception as e:
-                    # If auto-fetch fails, item is still created successfully
-                    messages.success(
-                        request, 
-                        f"Item '{name}' has been added successfully. (Image auto-fetch failed)"
-                    )
+            # Show appropriate success message
+            if image:
+                messages.success(request, f"Item '{name}' has been added successfully with your uploaded image.")
+            elif item.image:
+                messages.success(request, f"Item '{name}' has been added successfully with auto-fetched image.")
             else:
                 messages.success(request, f"Item '{name}' has been added successfully.")
             
