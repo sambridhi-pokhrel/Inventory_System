@@ -94,6 +94,13 @@ LOGOUT_REDIRECT_URL = '/users/login/'
 # Email Configuration (for development - prints to console)
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
+# Unsplash API Configuration for automatic product image fetching
+# Get your free API key from: https://unsplash.com/developers
+# Note: This is a demo access key with limited requests (50/hour)
+# For production, register for your own API key
+UNSPLASH_ACCESS_KEY = 'YOUR_UNSPLASH_ACCESS_KEY_HERE'
+UNSPLASH_API_URL = 'https://api.unsplash.com/search/photos'
+
 # For production, use SMTP:
 # EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 # EMAIL_HOST = 'smtp.gmail.com'
