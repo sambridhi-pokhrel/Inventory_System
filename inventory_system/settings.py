@@ -101,6 +101,37 @@ EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 UNSPLASH_ACCESS_KEY = 'YOUR_UNSPLASH_ACCESS_KEY_HERE'
 UNSPLASH_API_URL = 'https://api.unsplash.com/search/photos'
 
+# Payment Gateway Configuration
+# ==============================
+
+# Khalti Payment Gateway
+# Get your keys from: https://khalti.com/
+# Test Mode: Use test keys for development
+# Live Mode: Use live keys for production
+# IMPORTANT: Replace these with your actual Khalti keys from https://test-admin.khalti.com/
+KHALTI_PUBLIC_KEY = None  # Set to None to disable Khalti
+KHALTI_SECRET_KEY = None  # Set to None to disable Khalti
+KHALTI_VERIFY_URL = 'https://khalti.com/api/v2/payment/verify/'
+KHALTI_ENABLED = False  # Set to True when you have valid keys
+
+# eSewa Payment Gateway
+# Get your credentials from: https://esewa.com.np/
+# Test Mode: Use test merchant ID for development
+# Live Mode: Use live merchant ID for production
+ESEWA_MERCHANT_ID = 'EPAYTEST'  # Test merchant ID (replace with your merchant ID)
+ESEWA_SUCCESS_URL = 'http://127.0.0.1:8000/inventory/payment/esewa/verify/'
+ESEWA_FAILURE_URL = 'http://127.0.0.1:8000/inventory/payment/esewa/failure/'
+ESEWA_PAYMENT_URL = 'https://uat.esewa.com.np/epay/main'  # Test URL
+ESEWA_VERIFY_URL = 'https://uat.esewa.com.np/epay/transrec'  # Test verification URL
+ESEWA_ENABLED = False  # Set to True when eSewa test environment is accessible
+
+# For production, use:
+# ESEWA_PAYMENT_URL = 'https://esewa.com.np/epay/main'
+# ESEWA_VERIFY_URL = 'https://esewa.com.np/epay/transrec'
+
+# Payment Gateway Simulation Mode (for testing when gateways are unavailable)
+PAYMENT_SIMULATION_MODE = True  # Set to False in production
+
 # For production, use SMTP:
 # EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 # EMAIL_HOST = 'smtp.gmail.com'

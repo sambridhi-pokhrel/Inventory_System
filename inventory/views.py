@@ -4,11 +4,14 @@ from django.db.models import Q, Sum, F, Count
 from django.contrib import messages
 from django.http import HttpResponse, JsonResponse
 from django.core.paginator import Paginator
+from django.core.exceptions import ValidationError
 from django.utils import timezone
+from django.conf import settings
 from datetime import datetime, timedelta
 import csv
 import io
 import uuid
+import logging
 from .models import Item, Transaction
 from .forms import TransactionForm, TransactionFilterForm
 from users.decorators import (
@@ -18,6 +21,8 @@ from users.decorators import (
     role_required
 )
 from users.utils import UserRoleManager
+
+logger = logging.getLogger(__name__)
 
 
 @approved_user_required
@@ -477,7 +482,20 @@ def transaction_create(request):
                 context.update({'items': Item.objects.all().order_by('name')})
                 return render(request, 'inventory/transaction_create.html', context)
             
-            # Create transaction
+            # Create transaction with PENDING status
+            # For SALE transactions with Khalti/eSewa, user will complete payment separately
+            # For PURCHASE transactions, mark as PAID immediately (no payment gateway needed)
+            
+            if transaction_type == 'PURCHASE':
+                # Purchases are always marked as PAID (company is buying inventory)
+                payment_status = 'PAID'
+            elif payment_method in ['KHALTI', 'ESEWA']:
+                # Sales with Khalti/eSewa start as PENDING (user needs to pay)
+                payment_status = 'PENDING'
+            else:
+                # Sales with Cash/Bank Transfer/Credit are marked as PAID
+                payment_status = 'PAID'
+            
             transaction = Transaction.objects.create(
                 item=item,
                 transaction_type=transaction_type,
@@ -486,27 +504,24 @@ def transaction_create(request):
                 payment_method=payment_method,
                 performed_by=request.user,
                 notes=notes,
-                payment_status='PENDING'
+                payment_status=payment_status
             )
             
-            # Simulate payment processing
-            if payment_method == 'KHALTI':
-                success = transaction.simulate_khalti_payment()
-                if success:
-                    messages.success(
-                        request,
-                        f"Transaction completed successfully! Payment processed via Khalti. "
-                        f"Reference: {transaction.payment_reference}"
-                    )
-                else:
-                    messages.warning(request, "Transaction created but payment processing failed.")
+            # Show appropriate message based on payment status
+            if payment_status == 'PENDING':
+                messages.success(
+                    request,
+                    f"Transaction #{transaction.id} created successfully! "
+                    f"Please complete payment to finalize the transaction."
+                )
+                # Redirect to transaction detail page where user can pay
+                return redirect('inventory:transaction_detail', transaction_id=transaction.id)
             else:
-                # For other payment methods, mark as paid immediately
-                transaction.payment_status = 'PAID'
-                transaction.save()
-                messages.success(request, f"Transaction completed successfully via {payment_method}!")
-            
-            return redirect('inventory:transaction_list')
+                messages.success(
+                    request,
+                    f"Transaction #{transaction.id} completed successfully via {payment_method}!"
+                )
+                return redirect('inventory:transaction_list')
             
         except ValueError as e:
             messages.error(request, "Please enter valid numbers for quantity and price.")
@@ -532,7 +547,10 @@ def transaction_detail(request, transaction_id):
     )
     
     context = UserRoleManager.get_context_for_user(request.user)
-    context['transaction'] = transaction
+    context.update({
+        'transaction': transaction,
+        'KHALTI_ENABLED': getattr(settings, 'KHALTI_ENABLED', False),
+    })
     
     return render(request, 'inventory/transaction_detail.html', context)
 
@@ -828,3 +846,417 @@ def transaction_export_csv(request):
     writer.writerow(['Critical Stock Alerts', critical_items])
     
     return response
+
+
+# ==================== PAYMENT GATEWAY VIEWS ====================
+
+@manager_or_admin_required
+def initiate_khalti_payment(request, transaction_id):
+    """
+    Initiate Khalti payment for a transaction
+    
+    Academic Explanation (for Viva):
+    ---------------------------------
+    This view prepares payment data and renders a page that initiates
+    Khalti payment using their JavaScript SDK.
+    
+    Flow:
+    1. Get transaction from database
+    2. Validate transaction is eligible for payment
+    3. Prepare payment configuration
+    4. Render page with Khalti payment widget
+    5. User completes payment on Khalti
+    6. Khalti calls our verification endpoint
+    """
+    from .payment_gateways import KhaltiPaymentGateway
+    from .payment_simulation import PaymentSimulator
+    
+    transaction = get_object_or_404(Transaction, id=transaction_id)
+    
+    # Validate transaction
+    if transaction.payment_status == 'PAID':
+        messages.info(request, "This transaction is already paid.")
+        return redirect('inventory:transaction_detail', transaction_id=transaction_id)
+    
+    if transaction.payment_method != 'KHALTI':
+        messages.error(request, "This transaction is not set for Khalti payment.")
+        return redirect('inventory:transaction_detail', transaction_id=transaction_id)
+    
+    # Check if simulation mode is enabled
+    if PaymentSimulator.is_simulation_mode():
+        messages.info(request, "🧪 Using simulation mode (Khalti gateway not accessible)")
+        return redirect('inventory:simulate_payment_page', transaction_id=transaction_id, gateway_type='khalti')
+    
+    # Check if Khalti is enabled
+    if not getattr(settings, 'KHALTI_ENABLED', False):
+        messages.error(
+            request, 
+            "Khalti payment is not configured. Please contact administrator or use simulation mode."
+        )
+        return redirect('inventory:transaction_detail', transaction_id=transaction_id)
+    
+    # Initialize Khalti gateway
+    khalti = KhaltiPaymentGateway()
+    payment_data = khalti.initiate_payment(transaction, request)
+    
+    context = UserRoleManager.get_context_for_user(request.user)
+    context.update({
+        'transaction': transaction,
+        'payment_data': payment_data,
+        'khalti_public_key': settings.KHALTI_PUBLIC_KEY,
+    })
+    
+    return render(request, 'inventory/payment_khalti.html', context)
+
+
+@manager_or_admin_required
+def verify_khalti_payment(request):
+    """
+    Verify Khalti payment after user completes payment
+    
+    Academic Explanation (for Viva):
+    ---------------------------------
+    This is the callback endpoint that Khalti redirects to after payment.
+    We receive a payment token and must verify it with Khalti's API
+    before marking the transaction as paid.
+    
+    Security:
+    - Never trust client-side data alone
+    - Always verify with gateway's API
+    - Use atomic transactions for database updates
+    """
+    from .payment_gateways import KhaltiPaymentGateway
+    from django.db import transaction as db_transaction
+    
+    # Get payment data from Khalti callback
+    token = request.GET.get('token')
+    amount = request.GET.get('amount')
+    transaction_id = request.GET.get('product_identity')
+    
+    if not all([token, amount, transaction_id]):
+        messages.error(request, "Invalid payment callback data.")
+        return redirect('inventory:transaction_list')
+    
+    try:
+        transaction_obj = Transaction.objects.get(id=transaction_id)
+        
+        # Verify payment with Khalti API
+        khalti = KhaltiPaymentGateway()
+        verification_result = khalti.verify_payment(token, amount)
+        
+        if verification_result['success']:
+            # Payment verified successfully
+            with db_transaction.atomic():
+                transaction_obj.payment_status = 'PAID'
+                transaction_obj.payment_reference = verification_result['transaction_id']
+                transaction_obj.save()
+            
+            messages.success(
+                request,
+                f"Payment successful! Transaction #{transaction_obj.id} has been completed. "
+                f"Reference: {verification_result['transaction_id']}"
+            )
+            return redirect('inventory:payment_success', transaction_id=transaction_obj.id)
+        else:
+            # Payment verification failed
+            transaction_obj.payment_status = 'FAILED'
+            transaction_obj.save()
+            
+            messages.error(
+                request,
+                f"Payment verification failed: {verification_result.get('error', 'Unknown error')}"
+            )
+            return redirect('inventory:payment_failure', transaction_id=transaction_obj.id)
+            
+    except Transaction.DoesNotExist:
+        messages.error(request, "Transaction not found.")
+        return redirect('inventory:transaction_list')
+    except Exception as e:
+        logger.error(f"Khalti verification error: {str(e)}")
+        messages.error(request, f"Error processing payment: {str(e)}")
+        return redirect('inventory:transaction_list')
+
+
+@manager_or_admin_required
+def initiate_esewa_payment(request, transaction_id):
+    """
+    Initiate eSewa payment for a transaction
+    
+    Academic Explanation (for Viva):
+    ---------------------------------
+    eSewa uses form-based payment initiation. We generate an HTML form
+    with payment parameters and auto-submit it to eSewa's payment page.
+    
+    Flow:
+    1. Get transaction from database
+    2. Validate transaction
+    3. Generate payment form data
+    4. Render page with auto-submitting form
+    5. User redirected to eSewa payment page
+    6. After payment, eSewa redirects to our success/failure URL
+    """
+    from .payment_gateways import EsewaPaymentGateway
+    from .payment_simulation import PaymentSimulator
+    
+    transaction = get_object_or_404(Transaction, id=transaction_id)
+    
+    # Validate transaction
+    if transaction.payment_status == 'PAID':
+        messages.info(request, "This transaction is already paid.")
+        return redirect('inventory:transaction_detail', transaction_id=transaction_id)
+    
+    if transaction.payment_method != 'ESEWA':
+        messages.error(request, "This transaction is not set for eSewa payment.")
+        return redirect('inventory:transaction_detail', transaction_id=transaction_id)
+    
+    # Check if simulation mode is enabled
+    if PaymentSimulator.is_simulation_mode():
+        messages.info(request, "🧪 Using simulation mode (eSewa gateway not accessible)")
+        return redirect('inventory:simulate_payment_page', transaction_id=transaction_id, gateway_type='esewa')
+    
+    # Check if eSewa is enabled
+    if not getattr(settings, 'ESEWA_ENABLED', False):
+        messages.warning(
+            request,
+            "eSewa test environment is not accessible. Using simulation mode for demonstration."
+        )
+        return redirect('inventory:simulate_payment_page', transaction_id=transaction_id, gateway_type='esewa')
+    
+    # Initialize eSewa gateway
+    esewa = EsewaPaymentGateway()
+    payment_form = esewa.generate_payment_form(transaction)
+    
+    context = UserRoleManager.get_context_for_user(request.user)
+    context.update({
+        'transaction': transaction,
+        'payment_form': payment_form,
+    })
+    
+    return render(request, 'inventory/payment_esewa.html', context)
+
+
+@manager_or_admin_required
+def verify_esewa_payment(request):
+    """
+    Verify eSewa payment after successful payment
+    
+    Academic Explanation (for Viva):
+    ---------------------------------
+    This is the success callback URL for eSewa. After successful payment,
+    eSewa redirects here with payment parameters. We must verify these
+    with eSewa's verification API before marking transaction as paid.
+    
+    Security:
+    - Verify all parameters with eSewa API
+    - Use atomic transactions
+    - Log all verification attempts
+    """
+    from .payment_gateways import EsewaPaymentGateway
+    from django.db import transaction as db_transaction
+    
+    # Get payment data from eSewa callback
+    ref_id = request.GET.get('refId')
+    oid = request.GET.get('oid')  # Our transaction ID (format: TXN123)
+    amt = request.GET.get('amt')
+    
+    if not all([ref_id, oid, amt]):
+        messages.error(request, "Invalid payment callback data.")
+        return redirect('inventory:transaction_list')
+    
+    try:
+        # Extract transaction ID from oid (format: TXN123 -> 123)
+        transaction_id = oid.replace('TXN', '')
+        transaction_obj = Transaction.objects.get(id=transaction_id)
+        
+        # Verify payment with eSewa API
+        esewa = EsewaPaymentGateway()
+        verification_result = esewa.verify_payment(oid, ref_id, amt)
+        
+        if verification_result['success']:
+            # Payment verified successfully
+            with db_transaction.atomic():
+                transaction_obj.payment_status = 'PAID'
+                transaction_obj.payment_reference = ref_id
+                transaction_obj.save()
+            
+            messages.success(
+                request,
+                f"Payment successful! Transaction #{transaction_obj.id} has been completed. "
+                f"Reference: {ref_id}"
+            )
+            return redirect('inventory:payment_success', transaction_id=transaction_obj.id)
+        else:
+            # Payment verification failed
+            transaction_obj.payment_status = 'FAILED'
+            transaction_obj.save()
+            
+            messages.error(
+                request,
+                f"Payment verification failed: {verification_result.get('error', 'Unknown error')}"
+            )
+            return redirect('inventory:payment_failure', transaction_id=transaction_obj.id)
+            
+    except Transaction.DoesNotExist:
+        messages.error(request, "Transaction not found.")
+        return redirect('inventory:transaction_list')
+    except Exception as e:
+        logger.error(f"eSewa verification error: {str(e)}")
+        messages.error(request, f"Error processing payment: {str(e)}")
+        return redirect('inventory:transaction_list')
+
+
+@manager_or_admin_required
+def esewa_payment_failure(request):
+    """
+    Handle eSewa payment failure
+    
+    This is called when user cancels payment or payment fails on eSewa
+    """
+    messages.error(request, "Payment was cancelled or failed. Please try again.")
+    return redirect('inventory:transaction_list')
+
+
+@approved_user_required
+def payment_success(request, transaction_id):
+    """
+    Payment success page
+    
+    Shows payment confirmation and transaction details
+    """
+    transaction = get_object_or_404(Transaction, id=transaction_id)
+    
+    context = UserRoleManager.get_context_for_user(request.user)
+    context.update({
+        'transaction': transaction,
+        'page_title': 'Payment Successful',
+    })
+    
+    return render(request, 'inventory/payment_success.html', context)
+
+
+@approved_user_required
+def payment_failure(request, transaction_id):
+    """
+    Payment failure page
+    
+    Shows payment failure message and allows retry
+    """
+    transaction = get_object_or_404(Transaction, id=transaction_id)
+    
+    context = UserRoleManager.get_context_for_user(request.user)
+    context.update({
+        'transaction': transaction,
+        'page_title': 'Payment Failed',
+    })
+    
+    return render(request, 'inventory/payment_failure.html', context)
+
+
+# ==================== PAYMENT SIMULATION VIEWS ====================
+
+@manager_or_admin_required
+def simulate_payment_page(request, transaction_id, gateway_type):
+    """
+    Show simulated payment page when actual gateways are not accessible
+    
+    This is used for:
+    - Testing when payment gateways are down
+    - Academic demonstration without real gateway accounts
+    - Development without internet connection
+    """
+    from .payment_simulation import PaymentSimulator
+    
+    if not PaymentSimulator.is_simulation_mode():
+        messages.error(request, "Simulation mode is not enabled.")
+        return redirect('inventory:transaction_detail', transaction_id=transaction_id)
+    
+    transaction = get_object_or_404(Transaction, id=transaction_id)
+    
+    gateway_names = {
+        'khalti': 'Khalti',
+        'esewa': 'eSewa'
+    }
+    
+    context = UserRoleManager.get_context_for_user(request.user)
+    context.update({
+        'transaction': transaction,
+        'gateway_type': gateway_type,
+        'gateway_name': gateway_names.get(gateway_type, 'Payment Gateway'),
+    })
+    
+    return render(request, 'inventory/payment_simulation.html', context)
+
+
+@manager_or_admin_required
+def simulate_payment_complete(request, transaction_id):
+    """
+    Complete simulated payment
+    
+    Simulates the callback from payment gateway
+    """
+    from .payment_simulation import PaymentSimulator
+    from django.db import transaction as db_transaction
+    from django.core.exceptions import ValidationError
+    
+    if not PaymentSimulator.is_simulation_mode():
+        messages.error(request, "Simulation mode is not enabled.")
+        return redirect('inventory:transaction_detail', transaction_id=transaction_id)
+    
+    if request.method != 'POST':
+        return redirect('inventory:transaction_detail', transaction_id=transaction_id)
+    
+    transaction_obj = get_object_or_404(Transaction, id=transaction_id)
+    action = request.POST.get('action')
+    gateway = request.POST.get('gateway')
+    
+    if action == 'success':
+        # Simulate successful payment
+        try:
+            with db_transaction.atomic():
+                if gateway == 'khalti':
+                    result = PaymentSimulator.simulate_khalti_payment(transaction_obj)
+                else:
+                    result = PaymentSimulator.simulate_esewa_payment(transaction_obj)
+                
+                transaction_obj.payment_status = 'PAID'
+                transaction_obj.payment_reference = result['transaction_id'] if gateway == 'khalti' else result['ref_id']
+                transaction_obj.save()
+            
+            messages.success(
+                request,
+                f"✅ Payment simulated successfully! Transaction #{transaction_obj.id} completed. "
+                f"Reference: {transaction_obj.payment_reference} (Simulation Mode)"
+            )
+            return redirect('inventory:payment_success', transaction_id=transaction_obj.id)
+            
+        except ValidationError as e:
+            # Handle insufficient stock error
+            transaction_obj.payment_status = 'FAILED'
+            transaction_obj.save()
+            
+            error_message = str(e.messages[0]) if hasattr(e, 'messages') else str(e)
+            messages.error(
+                request,
+                f"❌ Payment cannot be completed: {error_message} "
+                f"Transaction #{transaction_obj.id} marked as FAILED."
+            )
+            return redirect('inventory:payment_failure', transaction_id=transaction_obj.id)
+            
+        except Exception as e:
+            logger.error(f"Simulation payment error: {str(e)}")
+            messages.error(
+                request,
+                f"❌ Error processing payment: {str(e)}"
+            )
+            return redirect('inventory:transaction_detail', transaction_id=transaction_obj.id)
+    
+    else:
+        # Simulate failed payment
+        transaction_obj.payment_status = 'FAILED'
+        transaction_obj.save()
+        
+        messages.error(
+            request,
+            f"❌ Payment simulation failed. Transaction #{transaction_obj.id} marked as failed. (Simulation Mode)"
+        )
+        return redirect('inventory:payment_failure', transaction_id=transaction_obj.id)

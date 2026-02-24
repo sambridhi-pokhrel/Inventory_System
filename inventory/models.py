@@ -341,6 +341,7 @@ class Transaction(models.Model):
     
     PAYMENT_METHOD_CHOICES = [
         ('KHALTI', 'Khalti'),
+        ('ESEWA', 'eSewa'),
         ('CASH', 'Cash'),
         ('BANK_TRANSFER', 'Bank Transfer'),
         ('CREDIT', 'Credit'),
@@ -378,9 +379,28 @@ class Transaction(models.Model):
             raise ValidationError("Unit price must be positive")
         
         # Check stock availability for sales
-        if self.transaction_type == 'SALE':
-            if self.item.quantity < self.quantity:
-                raise ValidationError(f"Insufficient stock. Available: {self.item.quantity}")
+        # Only validate stock when:
+        # 1. Creating a new PAID transaction (Cash/Bank Transfer)
+        # 2. Updating existing transaction from PENDING to PAID
+        if self.transaction_type == 'SALE' and self.payment_status == 'PAID':
+            # For new transactions, always validate
+            if not self.pk:
+                if self.item.quantity < self.quantity:
+                    raise ValidationError(f"Insufficient stock. Available: {self.item.quantity}")
+            else:
+                # For existing transactions, only validate if status is changing to PAID
+                try:
+                    old_transaction = Transaction.objects.get(pk=self.pk)
+                    # Only validate if status is changing from non-PAID to PAID
+                    if old_transaction.payment_status != 'PAID':
+                        if self.item.quantity < self.quantity:
+                            raise ValidationError(
+                                f"Insufficient stock to complete payment. "
+                                f"Available: {self.item.quantity}, Required: {self.quantity}. "
+                                f"Please reduce quantity or restock item."
+                            )
+                except Transaction.DoesNotExist:
+                    pass
     
     def simulate_khalti_payment(self):
         """Simulate Khalti payment processing"""
@@ -401,15 +421,27 @@ class Transaction(models.Model):
         # Validate before saving
         self.clean()
         
+        # Check if this is an update (existing transaction) or new creation
+        is_new = self.pk is None
+        
+        # For existing transactions, check if payment status changed to PAID
+        if not is_new:
+            try:
+                old_transaction = Transaction.objects.get(pk=self.pk)
+                status_changed_to_paid = (
+                    old_transaction.payment_status != 'PAID' and 
+                    self.payment_status == 'PAID'
+                )
+            except Transaction.DoesNotExist:
+                status_changed_to_paid = False
+        else:
+            # For new transactions, check if status is PAID
+            status_changed_to_paid = self.payment_status == 'PAID'
+        
         # Use atomic transaction to ensure data consistency
         with transaction.atomic():
-            # Only update stock if payment is successful or for purchases
-            should_update_stock = (
-                self.payment_status == 'PAID' or 
-                self.transaction_type == 'PURCHASE'
-            )
-            
-            if should_update_stock:
+            # Only update stock when payment status becomes PAID
+            if status_changed_to_paid:
                 # Update item stock based on transaction type
                 if self.transaction_type == 'SALE':
                     self.item.quantity -= self.quantity
