@@ -98,7 +98,7 @@ EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 # Get your free API key from: https://unsplash.com/developers
 # Note: If no API key is configured, system uses Lorem Picsum (free placeholder images)
 # Lorem Picsum: https://picsum.photos/ - No API key needed, works automatically
-UNSPLASH_ACCESS_KEY = 'YOUR_UNSPLASH_ACCESS_KEY_HERE'
+UNSPLASH_ACCESS_KEY = 'PSYRx2PeCWu_Puu_FgIIC-H4KdexJ7gr6jPipGnS-ig'
 UNSPLASH_API_URL = 'https://api.unsplash.com/search/photos'
 
 # Payment Gateway Configuration

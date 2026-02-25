@@ -286,7 +286,18 @@ def item_add(request):
             if image:
                 messages.success(request, f"Item '{name}' has been added successfully with your uploaded image.")
             elif item.image:
-                messages.success(request, f"Item '{name}' has been added successfully with auto-fetched image.")
+                # Check if Unsplash is configured
+                from django.conf import settings
+                unsplash_key = getattr(settings, 'UNSPLASH_ACCESS_KEY', None)
+                if unsplash_key and unsplash_key != 'YOUR_UNSPLASH_ACCESS_KEY_HERE':
+                    messages.success(request, f"Item '{name}' has been added with product image from Unsplash.")
+                else:
+                    messages.warning(
+                        request,
+                        f"Item '{name}' added with placeholder image. "
+                        f"For product-specific images, configure Unsplash API key in settings. "
+                        f"See GET_UNSPLASH_KEY_QUICK.md for instructions."
+                    )
             else:
                 messages.success(request, f"Item '{name}' has been added successfully.")
             

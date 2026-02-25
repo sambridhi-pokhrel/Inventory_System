@@ -42,21 +42,51 @@ class Item(models.Model):
         
         Academic Explanation (for Viva):
         =====================================
-        This method implements automatic image fetching to enhance user experience.
-        When a product is created without an image, the system automatically:
-        1. First tries Unsplash API (if configured) for relevant images
-        2. Falls back to Lorem Picsum (free, no API key needed) for placeholder
-        3. Downloads the image
-        4. Saves it to the Django media directory
-        5. Assigns it to the ImageField
+        This method implements intelligent automatic image fetching with improved
+        relevance and accuracy for product inventory systems.
         
-        Error Handling:
-        - If API key is not configured → Uses Lorem Picsum
-        - If API request fails → Uses Lorem Picsum
-        - If no images found → Uses Lorem Picsum
-        - If download fails → Returns None (uses placeholder SVG)
+        Image Fetching Strategy (Priority Order):
+        1. Unsplash API (if configured) - High-quality, relevant product images
+        2. Lorem Picsum (always available) - Consistent placeholder images
+        3. SVG Placeholder (built-in) - Fallback if all else fails
         
-        This ensures the system remains stable even without internet connectivity.
+        Unsplash Search Optimization:
+        - Uses refined search queries with contextual keywords
+        - Keywords: "product", "isolated", "white background", "catalog"
+        - Filters results by orientation (square/landscape only)
+        - Avoids unrelated categories (nature, people, abstract)
+        - Multiple query variations for better success rate
+        - Content filtering to ensure appropriate images
+        
+        Why This Improves Relevance:
+        - Simple query "Laptop" → may return scenic laptop photos
+        - Refined query "Laptop product isolated white background" → catalog-style product photo
+        - Result: Clean, professional product images suitable for inventory
+        
+        Lorem Picsum Enhancement:
+        - Uses 'seed' parameter for consistency
+        - Same product name → same placeholder image
+        - Prevents random image changes on page refresh
+        - Professional photography suitable for placeholders
+        
+        Error Handling (Graceful Degradation):
+        - If API key not configured → Skip Unsplash, use Lorem Picsum
+        - If API request fails → Try Lorem Picsum
+        - If no images found → Try Lorem Picsum
+        - If download fails → Return None (uses SVG placeholder)
+        - System never breaks due to image fetching
+        
+        Manual Upload Priority:
+        - Manual uploads ALWAYS take precedence
+        - Auto-fetch only happens when image field is empty
+        - Users can replace auto-fetched images anytime
+        
+        This ensures:
+        - Better visual consistency across inventory
+        - More relevant product images
+        - Professional catalog appearance
+        - Stable system operation
+        - Good user experience
         """
         from django.conf import settings
         
@@ -67,14 +97,17 @@ class Item(models.Model):
         try:
             if use_unsplash:
                 # Try Unsplash API first (if configured)
-                logger.info(f"Attempting Unsplash API for: {self.name}")
+                # Uses improved search queries for better product image relevance
+                logger.info(f"Attempting Unsplash API with refined search for: {self.name}")
                 result = self._fetch_from_unsplash(api_key)
                 if result:
+                    logger.info(f"Successfully fetched relevant product image from Unsplash")
                     return result
-                logger.info("Unsplash failed, falling back to Lorem Picsum")
+                logger.info("Unsplash search completed, falling back to Lorem Picsum")
             
             # Fallback to Lorem Picsum (no API key needed)
-            logger.info(f"Fetching placeholder image for: {self.name}")
+            # Uses seed parameter for consistent placeholders
+            logger.info(f"Fetching consistent placeholder image for: {self.name}")
             return self._fetch_from_lorem_picsum()
             
         except Exception as e:
