@@ -1,16 +1,11 @@
 from django.contrib import admin
 from django.urls import path, include
-from django.shortcuts import redirect
 from django.conf import settings
 from django.conf.urls.static import static
-
-def root_redirect(request):
-    if request.user.is_authenticated:
-        return redirect('users:dashboard')
-    return redirect('users:login')
+from users.views import landing_view
 
 urlpatterns = [
-    path("", root_redirect, name="root"),
+    path("", landing_view, name="landing"),
     path("admin/", admin.site.urls),
     path("users/", include("users.urls")),
     path("inventory/", include("inventory.urls")),

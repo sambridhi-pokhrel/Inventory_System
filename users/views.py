@@ -253,3 +253,12 @@ class CustomPasswordResetView(PasswordResetView):
 class CustomPasswordResetConfirmView(PasswordResetConfirmView):
     template_name = 'users/password_reset_confirm.html'
     success_url = reverse_lazy('users:password_reset_complete')
+
+
+def landing_view(request):
+    """Modern landing page for the inventory system"""
+    # If user is already authenticated, redirect to dashboard
+    if request.user.is_authenticated:
+        return redirect('users:dashboard')
+    
+    return render(request, 'landing.html')
