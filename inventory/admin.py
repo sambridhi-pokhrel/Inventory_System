@@ -1,5 +1,9 @@
 from django.contrib import admin
 from .models import Item, Transaction
+from .models import Supplier, Customer
+
+admin.site.register(Supplier)
+admin.site.register(Customer)
 
 @admin.register(Item)
 class ItemAdmin(admin.ModelAdmin):
@@ -49,15 +53,22 @@ class ItemAdmin(admin.ModelAdmin):
 
 @admin.register(Transaction)
 class TransactionAdmin(admin.ModelAdmin):
-    list_display = ('item', 'transaction_type', 'quantity', 'unit_price', 'total_amount', 'performed_by', 'timestamp')
-    list_filter = ('transaction_type', 'timestamp', 'item')
-    search_fields = ('item__name', 'performed_by__username')
+    list_display = ('item', 'transaction_type', 'quantity', 'unit_price', 'total_amount', 'performed_by', 'timestamp', 'get_supplier_or_customer')
+    list_filter = ('transaction_type', 'timestamp', 'item', 'payment_status')
+    search_fields = ('item__name', 'performed_by__username', 'supplier__name', 'customer__name')
     readonly_fields = ('total_amount', 'timestamp')
     ordering = ('-timestamp',)
     
     fieldsets = (
         ('Transaction Details', {
             'fields': ('item', 'transaction_type', 'quantity', 'unit_price')
+        }),
+        ('Supplier/Customer Information', {
+            'fields': ('supplier', 'customer'),
+            'description': 'For PURCHASE: select Supplier. For SALE: select Customer.'
+        }),
+        ('Payment Information', {
+            'fields': ('payment_status', 'payment_method', 'payment_reference')
         }),
         ('Additional Information', {
             'fields': ('performed_by', 'notes')
@@ -67,6 +78,15 @@ class TransactionAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
+    
+    def get_supplier_or_customer(self, obj):
+        """Display supplier for purchases, customer for sales"""
+        if obj.transaction_type == 'PURCHASE' and obj.supplier:
+            return f"Supplier: {obj.supplier.name}"
+        elif obj.transaction_type == 'SALE' and obj.customer:
+            return f"Customer: {obj.customer.name}"
+        return "-"
+    get_supplier_or_customer.short_description = 'Supplier/Customer'
     
     def get_readonly_fields(self, request, obj=None):
         if obj:  # Editing existing transaction

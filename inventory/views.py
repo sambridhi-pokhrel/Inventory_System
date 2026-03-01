@@ -473,6 +473,8 @@ def transaction_create(request):
         unit_price = request.POST.get('unit_price')
         payment_method = request.POST.get('payment_method', 'KHALTI')
         notes = request.POST.get('notes', '')
+        supplier_id = request.POST.get('supplier')  # Get supplier
+        customer_id = request.POST.get('customer')  # Get customer
         
         try:
             item = Item.objects.get(id=item_id)
@@ -484,13 +486,21 @@ def transaction_create(request):
             if quantity <= 0:
                 messages.error(request, "Quantity must be greater than 0.")
                 context = UserRoleManager.get_context_for_user(request.user)
-                context.update({'items': Item.objects.all().order_by('name')})
+                context.update({
+                    'items': Item.objects.all().order_by('name'),
+                    'suppliers': Supplier.objects.all().order_by('name'),
+                    'customers': Customer.objects.all().order_by('name'),
+                })
                 return render(request, 'inventory/transaction_create.html', context)
             
             if unit_price <= 0:
                 messages.error(request, "Unit price must be greater than 0.")
                 context = UserRoleManager.get_context_for_user(request.user)
-                context.update({'items': Item.objects.all().order_by('name')})
+                context.update({
+                    'items': Item.objects.all().order_by('name'),
+                    'suppliers': Supplier.objects.all().order_by('name'),
+                    'customers': Customer.objects.all().order_by('name'),
+                })
                 return render(request, 'inventory/transaction_create.html', context)
             
             # Create transaction with PENDING status
@@ -507,6 +517,20 @@ def transaction_create(request):
                 # Sales with Cash/Bank Transfer/Credit are marked as PAID
                 payment_status = 'PAID'
             
+            # Get supplier or customer objects
+            supplier = None
+            customer = None
+            if supplier_id:
+                try:
+                    supplier = Supplier.objects.get(id=supplier_id)
+                except Supplier.DoesNotExist:
+                    pass
+            if customer_id:
+                try:
+                    customer = Customer.objects.get(id=customer_id)
+                except Customer.DoesNotExist:
+                    pass
+            
             transaction = Transaction.objects.create(
                 item=item,
                 transaction_type=transaction_type,
@@ -515,7 +539,9 @@ def transaction_create(request):
                 payment_method=payment_method,
                 performed_by=request.user,
                 notes=notes,
-                payment_status=payment_status
+                payment_status=payment_status,
+                supplier=supplier,  # Add supplier
+                customer=customer,  # Add customer
             )
             
             # Show appropriate message based on payment status
@@ -541,9 +567,14 @@ def transaction_create(request):
         except Exception as e:
             messages.error(request, f"Error creating transaction: {str(e)}")
     
+    # Import Supplier and Customer models
+    from .models import Supplier, Customer
+    
     context = UserRoleManager.get_context_for_user(request.user)
     context.update({
         'items': Item.objects.all().order_by('name'),
+        'suppliers': Supplier.objects.all().order_by('name'),
+        'customers': Customer.objects.all().order_by('name'),
     })
     
     return render(request, 'inventory/transaction_create.html', context)
