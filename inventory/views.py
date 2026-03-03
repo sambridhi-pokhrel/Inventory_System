@@ -12,7 +12,7 @@ import csv
 import io
 import uuid
 import logging
-from .models import Item, Transaction
+from .models import Item, Transaction, Supplier, Customer
 from .forms import TransactionForm, TransactionFilterForm
 from users.decorators import (
     approved_user_required,
@@ -443,6 +443,14 @@ def transaction_list(request):
         payment_status='PENDING'
     ).aggregate(total=Sum('total_amount'))['total'] or 0
     
+    # Calculate total profit from paid sales
+    paid_sales = Transaction.objects.filter(
+        transaction_type='SALE',
+        payment_status='PAID'
+    ).select_related('item')
+    
+    total_profit = sum(sale.total_profit for sale in paid_sales)
+    
     context = UserRoleManager.get_context_for_user(request.user)
     context.update({
         'transactions': page_obj,
@@ -451,6 +459,7 @@ def transaction_list(request):
         'total_sales': total_sales,
         'total_purchases': total_purchases,
         'pending_payments': pending_payments,
+        'total_profit': total_profit,
         'transaction_count': transactions.count(),
         'filters': {
             'type': transaction_type,
@@ -566,9 +575,6 @@ def transaction_create(request):
             messages.error(request, "Selected item does not exist.")
         except Exception as e:
             messages.error(request, f"Error creating transaction: {str(e)}")
-    
-    # Import Supplier and Customer models
-    from .models import Supplier, Customer
     
     context = UserRoleManager.get_context_for_user(request.user)
     context.update({

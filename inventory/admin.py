@@ -7,16 +7,30 @@ admin.site.register(Customer)
 
 @admin.register(Item)
 class ItemAdmin(admin.ModelAdmin):
-    list_display = ('name', 'quantity', 'price', 'stock_status_display', 'total_value')
+    list_display = ('name', 'quantity', 'price', 'cost_price', 'profit_per_unit_display', 'stock_status_display', 'total_value')
     list_filter = ('quantity',)
     search_fields = ('name',)
     ordering = ('name',)
     
     fieldsets = (
         ('Item Information', {
-            'fields': ('name', 'quantity', 'price')
+            'fields': ('name', 'quantity', 'price', 'cost_price', 'image')
+        }),
+        ('Reorder Settings', {
+            'fields': ('reorder_level', 'lead_time_days')
         }),
     )
+    
+    def profit_per_unit_display(self, obj):
+        """Display profit per unit"""
+        profit = obj.profit_per_unit
+        if profit > 0:
+            return f"Rs. {profit:,.2f}"
+        elif profit < 0:
+            return f"-Rs. {abs(profit):,.2f}"
+        else:
+            return "Rs. 0.00"
+    profit_per_unit_display.short_description = 'Profit/Unit'
     
     def stock_status_display(self, obj):
         """Display stock status with color coding"""
@@ -31,7 +45,7 @@ class ItemAdmin(admin.ModelAdmin):
     
     def total_value(self, obj):
         """Calculate total value of this item"""
-        return f"${obj.quantity * obj.price:.2f}"
+        return f"Rs. {obj.quantity * obj.price:,.2f}"
     total_value.short_description = 'Total Value'
     
     # Add custom actions

@@ -167,20 +167,20 @@
                 </div>
             </div>
             <div class="col-lg-3 col-md-6 mb-3">
+                <div class="stat-card primary">
+                    <div class="card-body text-center">
+                        <i class="bi bi-graph-up-arrow display-6 text-primary mb-2"></i>
+                        <h4 class="fw-bold text-primary">{{ total_profit|rupees|default:"Rs. 0.00" }}</h4>
+                        <p class="text-muted mb-0">Total Profit</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6 mb-3">
                 <div class="stat-card warning">
                     <div class="card-body text-center">
                         <i class="bi bi-clock display-6 text-warning mb-2"></i>
                         <h4 class="fw-bold text-warning">{{ pending_payments|rupees|default:"Rs. 0.00" }}</h4>
                         <p class="text-muted mb-0">Pending Payments</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-lg-3 col-md-6 mb-3">
-                <div class="stat-card primary">
-                    <div class="card-body text-center">
-                        <i class="bi bi-receipt display-6 text-primary mb-2"></i>
-                        <h4 class="fw-bold text-primary">{{ transaction_count|default:0 }}</h4>
-                        <p class="text-muted mb-0">Total Transactions</p>
                     </div>
                 </div>
             </div>
@@ -326,25 +326,26 @@
             </div>
             <div class="card-body p-0">
                 {% if transactions %}
-                    <div class="table-responsive">
-                        <table class="table table-hover mb-0">
-                            <thead>
+                    <div class="table-responsive" style="overflow-x: auto;">
+                        <table class="table table-hover mb-0" style="min-width: 1200px;">
+                            <thead class="table-light">
                                 <tr>
-                                    <th>Date</th>
-                                    <th>Type</th>
-                                    <th>Item</th>
-                                    <th>Quantity</th>
-                                    <th>Unit Price</th>
-                                    <th>Total Amount</th>
-                                    <th>Payment</th>
-                                    <th>Performed By</th>
-                                    <th>Actions</th>
+                                    <th style="min-width: 120px;">Date</th>
+                                    <th style="min-width: 90px;">Type</th>
+                                    <th style="min-width: 150px;">Item</th>
+                                    <th style="min-width: 80px; text-align: center;">Quantity</th>
+                                    <th style="min-width: 100px;">Unit Price</th>
+                                    <th style="min-width: 120px;">Total Amount</th>
+                                    <th style="min-width: 100px;">Profit</th>
+                                    <th style="min-width: 120px;">Payment</th>
+                                    <th style="min-width: 120px;">Performed By</th>
+                                    <th style="min-width: 100px; text-align: center;">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for transaction in transactions %}
                                     <tr>
-                                        <td>
+                                        <td style="white-space: nowrap;">
                                             <div class="d-flex align-items-center">
                                                 <i class="bi bi-calendar me-2 text-muted"></i>
                                                 <div>
@@ -370,14 +371,24 @@
                                                 <strong>{{ transaction.item.name }}</strong>
                                             </div>
                                         </td>
-                                        <td>
+                                        <td class="text-center">
                                             <span class="fw-bold">{{ transaction.quantity }}</span>
                                         </td>
-                                        <td>
+                                        <td style="white-space: nowrap;">
                                             <span class="text-success fw-bold">{{ transaction.unit_price|rupees }}</span>
                                         </td>
-                                        <td>
+                                        <td style="white-space: nowrap;">
                                             <span class="text-primary fw-bold">{{ transaction.total_amount|rupees }}</span>
+                                        </td>
+                                        <td style="white-space: nowrap;">
+                                            {% if transaction.transaction_type == 'SALE' %}
+                                                <span class="text-success fw-bold">
+                                                    <i class="bi bi-graph-up-arrow me-1"></i>
+                                                    {{ transaction.total_profit|rupees }}
+                                                </span>
+                                            {% else %}
+                                                <span class="text-muted">-</span>
+                                            {% endif %}
                                         </td>
                                         <td>
                                             <div>
@@ -396,18 +407,15 @@
                                                 {% endif %}
                                                 <br>
                                                 <small class="text-muted">{{ transaction.payment_method }}</small>
-                                                {% if transaction.payment_reference %}
-                                                    <br><small class="text-muted">{{ transaction.payment_reference }}</small>
-                                                {% endif %}
                                             </div>
                                         </td>
                                         <td>
                                             <div class="d-flex align-items-center">
                                                 <i class="bi bi-person me-2 text-muted"></i>
-                                                {{ transaction.performed_by.first_name|default:transaction.performed_by.username }}
+                                                <span>{{ transaction.performed_by.first_name|default:transaction.performed_by.username }}</span>
                                             </div>
                                         </td>
-                                        <td>
+                                        <td class="text-center">
                                             <div class="btn-group btn-group-sm">
                                                 <a href="{% url 'inventory:transaction_detail' transaction.id %}" 
                                                    class="btn btn-outline-primary" title="View Details">

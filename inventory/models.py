@@ -16,6 +16,7 @@ class Item(models.Model):
     name = models.CharField(max_length=100)
     quantity = models.IntegerField()
     price = models.DecimalField(max_digits=10, decimal_places=2)
+    cost_price = models.DecimalField(max_digits=10, decimal_places=2, default=0, help_text="Cost price per unit")
     reorder_level = models.IntegerField(default=10)
     lead_time_days = models.IntegerField(default=7)
     image = models.ImageField(upload_to='products/', blank=True, null=True)
@@ -42,6 +43,11 @@ class Item(models.Model):
     @property
     def is_low_stock(self):
         return self.quantity <= self.reorder_level
+    
+    @property
+    def profit_per_unit(self):
+        """Calculate profit per unit (selling price - cost price)"""
+        return self.price - self.cost_price
     
     @property
     def stock_status(self):
@@ -211,6 +217,14 @@ class Transaction(models.Model):
 
     def __str__(self):
         return f"{self.transaction_type} - {self.item.name} ({self.quantity}) - {self.payment_status}"
+    
+    @property
+    def total_profit(self):
+        """Calculate total profit for SALE transactions"""
+        if self.transaction_type == 'SALE':
+            profit_per_unit = self.unit_price - self.item.cost_price
+            return profit_per_unit * self.quantity
+        return Decimal('0.00')
 
     def clean(self):
         if self.quantity <= 0:
@@ -247,6 +261,8 @@ class Transaction(models.Model):
                     self.item.quantity -= self.quantity
                 elif self.transaction_type == 'PURCHASE':
                     self.item.quantity += self.quantity
+                    # Auto-update cost price when purchasing
+                    self.item.cost_price = self.unit_price
 
                 if self.item.quantity < 0:
                     raise ValidationError("Stock cannot be negative")

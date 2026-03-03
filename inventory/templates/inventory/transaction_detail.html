@@ -155,6 +155,19 @@
                                     <label class="form-label fw-bold text-muted">Total Amount</label>
                                     <div class="fs-4 fw-bold text-primary">{{ transaction.total_amount|rupees }}</div>
                                 </div>
+                                
+                                {% if transaction.transaction_type == 'SALE' %}
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold text-muted">Profit</label>
+                                    <div class="fs-4 fw-bold text-success">
+                                        <i class="bi bi-graph-up-arrow me-2"></i>
+                                        {{ transaction.total_profit|rupees }}
+                                    </div>
+                                    <small class="text-muted">
+                                        Profit per unit: {{ transaction.item.profit_per_unit|rupees }}
+                                    </small>
+                                </div>
+                                {% endif %}
                             </div>
                         </div>
                         
@@ -191,10 +204,19 @@
                             <span class="fw-bold text-success">{{ transaction.unit_price|rupees }}</span>
                         </div>
                         <hr>
-                        <div class="d-flex justify-content-between align-items-center">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
                             <span class="fw-bold">Total Amount:</span>
                             <span class="fs-5 fw-bold text-primary">{{ transaction.total_amount|rupees }}</span>
                         </div>
+                        {% if transaction.transaction_type == 'SALE' %}
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="fw-bold text-success">
+                                <i class="bi bi-graph-up-arrow me-1"></i>
+                                Total Profit:
+                            </span>
+                            <span class="fs-5 fw-bold text-success">{{ transaction.total_profit|rupees }}</span>
+                        </div>
+                        {% endif %}
                     </div>
                 </div>
 

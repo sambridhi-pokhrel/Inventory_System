@@ -254,6 +254,7 @@
                                     <th>Item Details</th>
                                     <th>Stock</th>
                                     <th>Price</th>
+                                    <th>Profit/Unit</th>
                                     <th>Status</th>
                                     <th>Reorder Info</th>
                                     <th style="width: 120px;">Actions</th>
@@ -280,7 +281,23 @@
                                         </td>
                                         <td class="align-middle">
                                             <div class="fw-bold text-success">{{ item.price|rupees }}</div>
-                                            <small class="text-muted">per unit</small>
+                                            <small class="text-muted">Selling price</small>
+                                        </td>
+                                        <td class="align-middle">
+                                            {% if item.profit_per_unit > 0 %}
+                                                <div class="fw-bold text-success">
+                                                    <i class="bi bi-arrow-up me-1"></i>
+                                                    {{ item.profit_per_unit|rupees }}
+                                                </div>
+                                            {% elif item.profit_per_unit < 0 %}
+                                                <div class="fw-bold text-danger">
+                                                    <i class="bi bi-arrow-down me-1"></i>
+                                                    {{ item.profit_per_unit|rupees }}
+                                                </div>
+                                            {% else %}
+                                                <div class="fw-bold text-muted">Rs. 0.00</div>
+                                            {% endif %}
+                                            <small class="text-muted">Cost: {{ item.cost_price|rupees }}</small>
                                         </td>
                                         <td class="align-middle">
                                             <span class="stock-status {{ item.stock_status }}">
