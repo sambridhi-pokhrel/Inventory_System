@@ -279,7 +279,8 @@ def item_add(request):
                 price=price,
                 reorder_level=reorder_level,
                 lead_time_days=lead_time_days,
-                image=image  # Can be None - model handles it automatically
+                image=image,  # Can be None - model handles it automatically
+                created_by=request.user  # Track who created this item
             )
             
             # Show appropriate success message

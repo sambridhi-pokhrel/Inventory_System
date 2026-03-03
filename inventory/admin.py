@@ -1,16 +1,59 @@
 from django.contrib import admin
-from .models import Item, Transaction
-from .models import Supplier, Customer
+from .models import Item, Transaction, Supplier, Customer
 
-admin.site.register(Supplier)
-admin.site.register(Customer)
+@admin.register(Supplier)
+class SupplierAdmin(admin.ModelAdmin):
+    list_display = ('name', 'phone', 'email', 'created_at', 'updated_at', 'created_by')
+    list_filter = ('created_at', 'updated_at')
+    search_fields = ('name', 'email', 'phone')
+    readonly_fields = ('created_at', 'updated_at')
+    
+    fieldsets = (
+        ('Supplier Information', {
+            'fields': ('name', 'email', 'phone', 'address')
+        }),
+        ('Audit Trail', {
+            'fields': ('created_by', 'created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    def save_model(self, request, obj, form, change):
+        """Automatically set created_by when creating new supplier"""
+        if not change:
+            obj.created_by = request.user
+        super().save_model(request, obj, form, change)
+
+@admin.register(Customer)
+class CustomerAdmin(admin.ModelAdmin):
+    list_display = ('name', 'phone', 'email', 'created_at', 'updated_at', 'created_by')
+    list_filter = ('created_at', 'updated_at')
+    search_fields = ('name', 'email', 'phone')
+    readonly_fields = ('created_at', 'updated_at')
+    
+    fieldsets = (
+        ('Customer Information', {
+            'fields': ('name', 'email', 'phone', 'address')
+        }),
+        ('Audit Trail', {
+            'fields': ('created_by', 'created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    def save_model(self, request, obj, form, change):
+        """Automatically set created_by when creating new customer"""
+        if not change:
+            obj.created_by = request.user
+        super().save_model(request, obj, form, change)
 
 @admin.register(Item)
 class ItemAdmin(admin.ModelAdmin):
-    list_display = ('name', 'quantity', 'price', 'cost_price', 'profit_per_unit_display', 'stock_status_display', 'total_value')
-    list_filter = ('quantity',)
+    list_display = ('name', 'quantity', 'price', 'cost_price', 'profit_per_unit_display', 'stock_status_display', 'created_at', 'created_by')
+    list_filter = ('quantity', 'created_at', 'updated_at')
     search_fields = ('name',)
     ordering = ('name',)
+    readonly_fields = ('created_at', 'updated_at')
     
     fieldsets = (
         ('Item Information', {
@@ -19,7 +62,17 @@ class ItemAdmin(admin.ModelAdmin):
         ('Reorder Settings', {
             'fields': ('reorder_level', 'lead_time_days')
         }),
+        ('Audit Trail', {
+            'fields': ('created_by', 'created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
     )
+    
+    def save_model(self, request, obj, form, change):
+        """Automatically set created_by when creating new item"""
+        if not change:  # Only set on creation, not on update
+            obj.created_by = request.user
+        super().save_model(request, obj, form, change)
     
     def profit_per_unit_display(self, obj):
         """Display profit per unit"""
@@ -67,10 +120,10 @@ class ItemAdmin(admin.ModelAdmin):
 
 @admin.register(Transaction)
 class TransactionAdmin(admin.ModelAdmin):
-    list_display = ('item', 'transaction_type', 'quantity', 'unit_price', 'total_amount', 'performed_by', 'timestamp', 'get_supplier_or_customer')
-    list_filter = ('transaction_type', 'timestamp', 'item', 'payment_status')
+    list_display = ('item', 'transaction_type', 'quantity', 'unit_price', 'total_amount', 'performed_by', 'timestamp', 'updated_at', 'get_supplier_or_customer')
+    list_filter = ('transaction_type', 'timestamp', 'updated_at', 'item', 'payment_status')
     search_fields = ('item__name', 'performed_by__username', 'supplier__name', 'customer__name')
-    readonly_fields = ('total_amount', 'timestamp')
+    readonly_fields = ('total_amount', 'timestamp', 'updated_at')
     ordering = ('-timestamp',)
     
     fieldsets = (
@@ -87,8 +140,8 @@ class TransactionAdmin(admin.ModelAdmin):
         ('Additional Information', {
             'fields': ('performed_by', 'notes')
         }),
-        ('Calculated Fields', {
-            'fields': ('total_amount', 'timestamp'),
+        ('Audit Trail', {
+            'fields': ('total_amount', 'timestamp', 'updated_at'),
             'classes': ('collapse',)
         }),
     )

@@ -21,6 +21,11 @@ class Item(models.Model):
     lead_time_days = models.IntegerField(default=7)
     image = models.ImageField(upload_to='products/', blank=True, null=True)
 
+    # Audit trail fields
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='created_items')
+
     def __str__(self):
         return self.name
 
@@ -43,12 +48,12 @@ class Item(models.Model):
     @property
     def is_low_stock(self):
         return self.quantity <= self.reorder_level
-    
+
     @property
     def profit_per_unit(self):
         """Calculate profit per unit (selling price - cost price)"""
         return self.price - self.cost_price
-    
+
     @property
     def stock_status(self):
         """Returns stock status for display"""
@@ -58,32 +63,32 @@ class Item(models.Model):
             return "low-stock"
         else:
             return "in-stock"
-    
+
     def get_image_url(self):
         """Return image URL or placeholder if no image exists"""
         if self.image:
             return self.image.url
         return '/static/images/no-image-placeholder.svg'
-    
+
     def get_average_daily_usage(self, days=30):
         """Calculate average daily usage based on sales transactions"""
         end_date = timezone.now()
         start_date = end_date - timedelta(days=days)
-        
+
         sales = self.transactions.filter(
             transaction_type='SALE',
             timestamp__gte=start_date,
             timestamp__lte=end_date
         )
-        
+
         total_sold = sum(sale.quantity for sale in sales)
         return total_sold / days if days > 0 else 0
-    
+
     def get_predicted_stock_needed(self):
         """Predict stock needed for lead time period"""
         daily_usage = self.get_average_daily_usage()
         return daily_usage * self.lead_time_days
-    
+
     @property
     def needs_reorder(self):
         """Check if item needs reordering using AI-based prediction"""
@@ -94,7 +99,7 @@ class Item(models.Model):
         except Exception as e:
             logger.error(f"AI prediction failed for {self.name}: {e}")
             return self.quantity <= self.reorder_level or self.quantity == 0
-    
+
     @property
     def ai_reorder_info(self):
         """Get detailed AI-based reorder information"""
@@ -108,7 +113,7 @@ class Item(models.Model):
                 'ai_powered': False,
                 'error': str(e)
             }
-    
+
     def get_ai_demand_forecast(self, days=7):
         """Get AI-powered demand forecast"""
         try:
@@ -120,7 +125,7 @@ class Item(models.Model):
                 'success': False,
                 'error': str(e)
             }
-    
+
     def train_ai_model(self):
         """Train AI model for this specific item"""
         try:
@@ -132,7 +137,7 @@ class Item(models.Model):
                 'success': False,
                 'error': str(e)
             }
-    
+
     @property
     def suggested_reorder_quantity(self):
         """Suggest reorder quantity"""
@@ -143,12 +148,17 @@ class Item(models.Model):
         return 0
 
 
+
 class Supplier(models.Model):
     name = models.CharField(max_length=255)
     email = models.EmailField(blank=True, null=True)
     phone = models.CharField(max_length=20, blank=True, null=True)
     address = models.TextField(blank=True, null=True)
+    
+    # Audit trail fields
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='created_suppliers')
 
     def __str__(self):
         return self.name
@@ -159,7 +169,11 @@ class Customer(models.Model):
     email = models.EmailField(blank=True, null=True)
     phone = models.CharField(max_length=20, blank=True, null=True)
     address = models.TextField(blank=True, null=True)
+    
+    # Audit trail fields
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='created_customers')
 
     def __str__(self):
         return self.name
@@ -195,9 +209,10 @@ class Transaction(models.Model):
     payment_reference = models.CharField(max_length=100, blank=True, null=True)
     performed_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='transactions')
     timestamp = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True)
     notes = models.TextField(blank=True, null=True)
 
-    # ✅ NEW SAFE ADDITIONS
+    # Supplier and Customer tracking
     supplier = models.ForeignKey(
         Supplier,
         on_delete=models.SET_NULL,
