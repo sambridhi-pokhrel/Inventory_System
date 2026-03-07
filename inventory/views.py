@@ -1309,3 +1309,49 @@ def simulate_payment_complete(request, transaction_id):
             f"❌ Payment simulation failed. Transaction #{transaction_obj.id} marked as failed. (Simulation Mode)"
         )
         return redirect('inventory:payment_failure', transaction_id=transaction_obj.id)
+
+
+
+@approved_user_required
+def monthly_report(request):
+    """Display monthly sales, purchases, and profit reports"""
+    from django.utils import timezone
+    from dateutil.relativedelta import relativedelta
+    
+    # Get year and month from request or use current
+    now = timezone.now()
+    year = int(request.GET.get('year', now.year))
+    month = int(request.GET.get('month', now.month))
+    
+    # Get the monthly report
+    report = Transaction.get_monthly_report(year, month)
+    
+    # Get month name
+    from calendar import month_name
+    month_name_str = month_name[month]
+    
+    # Get last 6 months for comparison (accurate month calculation)
+    reports_history = []
+    current_date = now.replace(day=1)  # Start from first day of current month
+    
+    for i in range(6):
+        # Subtract i months accurately
+        target_date = current_date - relativedelta(months=i)
+        temp_year = target_date.year
+        temp_month = target_date.month
+        
+        temp_report = Transaction.get_monthly_report(temp_year, temp_month)
+        temp_report['month_name'] = month_name[temp_month]
+        reports_history.append(temp_report)
+    
+    context = UserRoleManager.get_context_for_user(request.user)
+    context.update({
+        'report': report,
+        'year': year,
+        'month': month,
+        'month_name': month_name_str,
+        'reports_history': reports_history,
+    })
+    
+    return render(request, 'inventory/monthly_report.html', context)
+    return render(request, 'inventory/monthly_report.html', context)

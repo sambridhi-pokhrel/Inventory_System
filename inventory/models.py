@@ -354,3 +354,116 @@ class Transaction(models.Model):
                 self.item.save()
 
             super().save(*args, **kwargs)
+    
+    @classmethod
+    def total_sales_for_month(cls, year, month):
+        """
+        Calculate total sales amount for a specific month
+        
+        Args:
+            year (int): Year (e.g., 2026)
+            month (int): Month (1-12)
+            
+        Returns:
+            Decimal: Total sales amount for the month
+        """
+        from django.db.models import Sum
+        
+        result = cls.objects.filter(
+            transaction_type='SALE',
+            payment_status='PAID',
+            timestamp__year=year,
+            timestamp__month=month
+        ).aggregate(total=Sum('total_amount'))
+        
+        return result['total'] or Decimal('0.00')
+    
+    @classmethod
+    def total_purchases_for_month(cls, year, month):
+        """
+        Calculate total purchases amount for a specific month
+        
+        Args:
+            year (int): Year (e.g., 2026)
+            month (int): Month (1-12)
+            
+        Returns:
+            Decimal: Total purchases amount for the month
+        """
+        from django.db.models import Sum
+        
+        result = cls.objects.filter(
+            transaction_type='PURCHASE',
+            payment_status='PAID',
+            timestamp__year=year,
+            timestamp__month=month
+        ).aggregate(total=Sum('total_amount'))
+        
+        return result['total'] or Decimal('0.00')
+    
+    @classmethod
+    def total_profit_for_month(cls, year, month):
+        """
+        Calculate total profit for a specific month (only from SALE transactions)
+        
+        Args:
+            year (int): Year (e.g., 2026)
+            month (int): Month (1-12)
+            
+        Returns:
+            Decimal: Total profit for the month
+        """
+        sales = cls.objects.filter(
+            transaction_type='SALE',
+            payment_status='PAID',
+            timestamp__year=year,
+            timestamp__month=month
+        ).select_related('item')
+        
+        total_profit = sum(sale.total_profit for sale in sales)
+        return Decimal(str(total_profit))
+    
+    @classmethod
+    def get_monthly_report(cls, year, month):
+        """
+        Get comprehensive monthly report with sales, purchases, and profit
+        
+        Args:
+            year (int): Year (e.g., 2026)
+            month (int): Month (1-12)
+            
+        Returns:
+            dict: Dictionary containing sales, purchases, profit, and transaction counts
+        """
+        from django.db.models import Count
+        
+        sales_total = cls.total_sales_for_month(year, month)
+        purchases_total = cls.total_purchases_for_month(year, month)
+        profit_total = cls.total_profit_for_month(year, month)
+        
+        # Get transaction counts
+        sales_count = cls.objects.filter(
+            transaction_type='SALE',
+            payment_status='PAID',
+            timestamp__year=year,
+            timestamp__month=month
+        ).count()
+        
+        purchases_count = cls.objects.filter(
+            transaction_type='PURCHASE',
+            payment_status='PAID',
+            timestamp__year=year,
+            timestamp__month=month
+        ).count()
+        
+        return {
+            'year': year,
+            'month': month,
+            'total_sales': sales_total,
+            'total_purchases': purchases_total,
+            'total_profit': profit_total,
+            'net_cash_flow': sales_total - purchases_total,
+            'sales_count': sales_count,
+            'purchases_count': purchases_count,
+            'total_transactions': sales_count + purchases_count
+        }

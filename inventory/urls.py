@@ -19,6 +19,7 @@ urlpatterns = [
     # Analytics URLs
     path("analytics/", views.analytics_dashboard, name="analytics_dashboard"),
     path("analytics/item/<int:item_id>/", views.item_analytics, name="item_analytics"),
+    path("reports/monthly/", views.monthly_report, name="monthly_report"),
     
     # Transaction URLs
     path("transactions/", views.transaction_list, name="transaction_list"),
