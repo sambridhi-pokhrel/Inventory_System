@@ -3,20 +3,24 @@ from .models import Item, Transaction, Supplier, Customer
 
 @admin.register(Supplier)
 class SupplierAdmin(admin.ModelAdmin):
-    list_display = ('name', 'phone', 'email', 'created_at', 'updated_at', 'created_by')
-    list_filter = ('created_at', 'updated_at')
+    list_display = ('name', 'phone', 'email', 'is_active', 'created_at', 'updated_at', 'created_by')
+    list_filter = ('is_active', 'created_at', 'updated_at')
     search_fields = ('name', 'email', 'phone')
     readonly_fields = ('created_at', 'updated_at')
     
     fieldsets = (
         ('Supplier Information', {
-            'fields': ('name', 'email', 'phone', 'address')
+            'fields': ('name', 'email', 'phone', 'address', 'is_active')
         }),
         ('Audit Trail', {
             'fields': ('created_by', 'created_at', 'updated_at'),
             'classes': ('collapse',)
         }),
     )
+    
+    def get_queryset(self, request):
+        """Show all suppliers including soft-deleted ones in admin"""
+        return Supplier.all_objects.all()
     
     def save_model(self, request, obj, form, change):
         """Automatically set created_by when creating new supplier"""
@@ -26,20 +30,24 @@ class SupplierAdmin(admin.ModelAdmin):
 
 @admin.register(Customer)
 class CustomerAdmin(admin.ModelAdmin):
-    list_display = ('name', 'phone', 'email', 'created_at', 'updated_at', 'created_by')
-    list_filter = ('created_at', 'updated_at')
+    list_display = ('name', 'phone', 'email', 'is_active', 'created_at', 'updated_at', 'created_by')
+    list_filter = ('is_active', 'created_at', 'updated_at')
     search_fields = ('name', 'email', 'phone')
     readonly_fields = ('created_at', 'updated_at')
     
     fieldsets = (
         ('Customer Information', {
-            'fields': ('name', 'email', 'phone', 'address')
+            'fields': ('name', 'email', 'phone', 'address', 'is_active')
         }),
         ('Audit Trail', {
             'fields': ('created_by', 'created_at', 'updated_at'),
             'classes': ('collapse',)
         }),
     )
+    
+    def get_queryset(self, request):
+        """Show all customers including soft-deleted ones in admin"""
+        return Customer.all_objects.all()
     
     def save_model(self, request, obj, form, change):
         """Automatically set created_by when creating new customer"""
@@ -49,15 +57,15 @@ class CustomerAdmin(admin.ModelAdmin):
 
 @admin.register(Item)
 class ItemAdmin(admin.ModelAdmin):
-    list_display = ('name', 'quantity', 'price', 'cost_price', 'profit_per_unit_display', 'stock_status_display', 'created_at', 'created_by')
-    list_filter = ('quantity', 'created_at', 'updated_at')
+    list_display = ('name', 'quantity', 'price', 'cost_price', 'profit_per_unit_display', 'stock_status_display', 'is_active', 'created_at', 'created_by')
+    list_filter = ('quantity', 'is_active', 'created_at', 'updated_at')
     search_fields = ('name',)
     ordering = ('name',)
     readonly_fields = ('created_at', 'updated_at')
     
     fieldsets = (
         ('Item Information', {
-            'fields': ('name', 'quantity', 'price', 'cost_price', 'image')
+            'fields': ('name', 'quantity', 'price', 'cost_price', 'image', 'is_active')
         }),
         ('Reorder Settings', {
             'fields': ('reorder_level', 'lead_time_days')
@@ -67,6 +75,10 @@ class ItemAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
+    
+    def get_queryset(self, request):
+        """Show all items including soft-deleted ones in admin"""
+        return Item.all_objects.all()
     
     def save_model(self, request, obj, form, change):
         """Automatically set created_by when creating new item"""
@@ -120,15 +132,15 @@ class ItemAdmin(admin.ModelAdmin):
 
 @admin.register(Transaction)
 class TransactionAdmin(admin.ModelAdmin):
-    list_display = ('item', 'transaction_type', 'quantity', 'unit_price', 'total_amount', 'performed_by', 'timestamp', 'updated_at', 'get_supplier_or_customer')
-    list_filter = ('transaction_type', 'timestamp', 'updated_at', 'item', 'payment_status')
+    list_display = ('item', 'transaction_type', 'quantity', 'unit_price', 'total_amount', 'performed_by', 'timestamp', 'is_active', 'updated_at', 'get_supplier_or_customer')
+    list_filter = ('transaction_type', 'is_active', 'timestamp', 'updated_at', 'item', 'payment_status')
     search_fields = ('item__name', 'performed_by__username', 'supplier__name', 'customer__name')
     readonly_fields = ('total_amount', 'timestamp', 'updated_at')
     ordering = ('-timestamp',)
     
     fieldsets = (
         ('Transaction Details', {
-            'fields': ('item', 'transaction_type', 'quantity', 'unit_price')
+            'fields': ('item', 'transaction_type', 'quantity', 'unit_price', 'is_active')
         }),
         ('Supplier/Customer Information', {
             'fields': ('supplier', 'customer'),
@@ -145,6 +157,10 @@ class TransactionAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
+    
+    def get_queryset(self, request):
+        """Show all transactions including soft-deleted ones in admin"""
+        return Transaction.all_objects.all()
     
     def get_supplier_or_customer(self, obj):
         """Display supplier for purchases, customer for sales"""

@@ -12,6 +12,12 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+class ActiveManager(models.Manager):
+    """Manager that returns only active (non-deleted) records by default"""
+    def get_queryset(self):
+        return super().get_queryset().filter(is_active=True)
+
+
 class Item(models.Model):
     name = models.CharField(max_length=100)
     quantity = models.IntegerField()
@@ -20,27 +26,42 @@ class Item(models.Model):
     reorder_level = models.IntegerField(default=10)
     lead_time_days = models.IntegerField(default=7)
     image = models.ImageField(upload_to='products/', blank=True, null=True)
+    
+    # Soft delete field
+    is_active = models.BooleanField(default=True, help_text="Set to False to soft delete")
 
     # Audit trail fields
     created_at = models.DateTimeField(auto_now_add=True, null=True)
     updated_at = models.DateTimeField(auto_now=True, null=True)
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='created_items')
+    
+    # Managers
+    objects = ActiveManager()  # Default manager returns only active items
+    all_objects = models.Manager()  # Use this to get all items including deleted
 
     def __str__(self):
         return self.name
+    
+    def delete(self, *args, **kwargs):
+        """Soft delete: mark as inactive instead of deleting"""
+        self.is_active = False
+        self.save()
+    
+    def hard_delete(self):
+        """Permanently delete the record"""
+        super().delete()
 
     def save(self, *args, **kwargs):
         if not self.image or not self.image.name:
-            result = None
             try:
-                clean_name = self.name.lower().replace(' ', '')
-                image_url = f'https://picsum.photos/seed/{clean_name}/400/400'
-                response = requests.get(image_url, timeout=10)
-                if response.status_code == 200:
-                    filename = f"{clean_name}_placeholder.jpg"
-                    image_content = ContentFile(response.content)
+                from .image_fetcher import image_fetcher
+                result = image_fetcher.fetch_product_image(self.name)
+                
+                if result:
+                    image_content, filename = result
                     self.image.save(filename, image_content, save=False)
-            except Exception:
+            except Exception as e:
+                logger.warning(f"Failed to fetch image for {self.name}: {e}")
                 pass
 
         super().save(*args, **kwargs)
@@ -155,13 +176,29 @@ class Supplier(models.Model):
     phone = models.CharField(max_length=20, blank=True, null=True)
     address = models.TextField(blank=True, null=True)
     
+    # Soft delete field
+    is_active = models.BooleanField(default=True, help_text="Set to False to soft delete")
+    
     # Audit trail fields
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True, null=True)
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='created_suppliers')
+    
+    # Managers
+    objects = ActiveManager()
+    all_objects = models.Manager()
 
     def __str__(self):
         return self.name
+    
+    def delete(self, *args, **kwargs):
+        """Soft delete: mark as inactive instead of deleting"""
+        self.is_active = False
+        self.save()
+    
+    def hard_delete(self):
+        """Permanently delete the record"""
+        super().delete()
 
 
 class Customer(models.Model):
@@ -170,13 +207,29 @@ class Customer(models.Model):
     phone = models.CharField(max_length=20, blank=True, null=True)
     address = models.TextField(blank=True, null=True)
     
+    # Soft delete field
+    is_active = models.BooleanField(default=True, help_text="Set to False to soft delete")
+    
     # Audit trail fields
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True, null=True)
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='created_customers')
+    
+    # Managers
+    objects = ActiveManager()
+    all_objects = models.Manager()
 
     def __str__(self):
         return self.name
+    
+    def delete(self, *args, **kwargs):
+        """Soft delete: mark as inactive instead of deleting"""
+        self.is_active = False
+        self.save()
+    
+    def hard_delete(self):
+        """Permanently delete the record"""
+        super().delete()
 
 
 class Transaction(models.Model):
@@ -211,6 +264,9 @@ class Transaction(models.Model):
     timestamp = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True, null=True)
     notes = models.TextField(blank=True, null=True)
+    
+    # Soft delete field
+    is_active = models.BooleanField(default=True, help_text="Set to False to soft delete")
 
     # Supplier and Customer tracking
     supplier = models.ForeignKey(
@@ -226,12 +282,25 @@ class Transaction(models.Model):
         null=True,
         blank=True
     )
+    
+    # Managers
+    objects = ActiveManager()
+    all_objects = models.Manager()
 
     class Meta:
         ordering = ['-timestamp']
 
     def __str__(self):
         return f"{self.transaction_type} - {self.item.name} ({self.quantity}) - {self.payment_status}"
+    
+    def delete(self, *args, **kwargs):
+        """Soft delete: mark as inactive instead of deleting"""
+        self.is_active = False
+        self.save()
+    
+    def hard_delete(self):
+        """Permanently delete the record"""
+        super().delete()
     
     @property
     def total_profit(self):
