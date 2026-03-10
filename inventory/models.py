@@ -20,6 +20,7 @@ class ActiveManager(models.Manager):
 
 class Item(models.Model):
     name = models.CharField(max_length=100)
+    sku = models.CharField(max_length=50, unique=True, db_index=True, null=True, blank=True, help_text="Stock Keeping Unit - Unique identifier")
     quantity = models.IntegerField()
     price = models.DecimalField(max_digits=10, decimal_places=2)
     cost_price = models.DecimalField(max_digits=10, decimal_places=2, default=0, help_text="Cost price per unit")
@@ -40,7 +41,23 @@ class Item(models.Model):
     all_objects = models.Manager()  # Use this to get all items including deleted
 
     def __str__(self):
-        return self.name
+        return f"{self.name} (SKU: {self.sku})"
+    
+    @classmethod
+    def get_by_sku(cls, sku):
+        """
+        Lookup item by SKU
+        
+        Args:
+            sku (str): Stock Keeping Unit
+            
+        Returns:
+            Item: Item object or None if not found
+        """
+        try:
+            return cls.objects.get(sku=sku)
+        except cls.DoesNotExist:
+            return None
     
     def delete(self, *args, **kwargs):
         """Soft delete: mark as inactive instead of deleting"""
@@ -50,8 +67,22 @@ class Item(models.Model):
     def hard_delete(self):
         """Permanently delete the record"""
         super().delete()
+    
+    def generate_sku(self):
+        """Generate a unique SKU based on item name and ID"""
+        import re
+        # Clean name: remove special chars, convert to uppercase
+        clean_name = re.sub(r'[^a-zA-Z0-9]', '', self.name).upper()[:10]
+        # Use timestamp for uniqueness
+        from django.utils import timezone
+        timestamp = timezone.now().strftime('%Y%m%d%H%M%S')
+        return f"{clean_name}-{timestamp}"
 
     def save(self, *args, **kwargs):
+        # Auto-generate SKU if not provided
+        if not self.sku:
+            self.sku = self.generate_sku()
+        
         if not self.image or not self.image.name:
             try:
                 from .image_fetcher import image_fetcher

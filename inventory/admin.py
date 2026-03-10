@@ -57,15 +57,15 @@ class CustomerAdmin(admin.ModelAdmin):
 
 @admin.register(Item)
 class ItemAdmin(admin.ModelAdmin):
-    list_display = ('name', 'quantity', 'price', 'cost_price', 'profit_per_unit_display', 'stock_status_display', 'is_active', 'created_at', 'created_by')
+    list_display = ('sku', 'name', 'quantity', 'price', 'cost_price', 'profit_per_unit_display', 'stock_status_display', 'is_active', 'created_at', 'created_by')
     list_filter = ('quantity', 'is_active', 'created_at', 'updated_at')
-    search_fields = ('name',)
+    search_fields = ('name', 'sku')
     ordering = ('name',)
     readonly_fields = ('created_at', 'updated_at')
     
     fieldsets = (
         ('Item Information', {
-            'fields': ('name', 'quantity', 'price', 'cost_price', 'image', 'is_active')
+            'fields': ('name', 'sku', 'quantity', 'price', 'cost_price', 'image', 'is_active')
         }),
         ('Reorder Settings', {
             'fields': ('reorder_level', 'lead_time_days')
