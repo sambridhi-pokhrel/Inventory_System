@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q, Sum, F, Count
+from django.db.models.functions import TruncDate, TruncMonth
 from django.contrib import messages
 from django.http import HttpResponse, JsonResponse
 from django.core.paginator import Paginator
@@ -248,6 +249,7 @@ def item_add(request):
     """Add new inventory item with reorder settings and automatic image fetching"""
     if request.method == "POST":
         name = request.POST.get("name")
+        sku = request.POST.get("sku", "").strip() or None
         quantity = request.POST.get("quantity")
         price = request.POST.get("price")
         reorder_level = request.POST.get("reorder_level", 10)
@@ -275,12 +277,13 @@ def item_add(request):
             # If API fails: uses placeholder (system remains stable)
             item = Item.objects.create(
                 name=name,
+                sku=sku,
                 quantity=quantity,
                 price=price,
                 reorder_level=reorder_level,
                 lead_time_days=lead_time_days,
-                image=image,  # Can be None - model handles it automatically
-                created_by=request.user  # Track who created this item
+                image=image,
+                created_by=request.user
             )
             
             # Show appropriate success message
@@ -747,34 +750,118 @@ def ai_demand_forecast(request, item_id):
 
 @manager_or_admin_required
 def analytics_dashboard(request):
-    """Analytics dashboard with comprehensive visualizations"""
-    from .analytics import analytics
+    """Analytics dashboard with Chart.js visualizations"""
+    import json
+    from django.db.models import Sum, Count
+    from django.db.models.functions import TruncDate, TruncMonth
     
-    # Generate all charts
-    sales_trend = analytics.generate_sales_trend_chart(days=30)
-    inventory_performance = analytics.generate_inventory_performance_chart()
-    ai_performance = analytics.generate_ai_model_performance_chart()
+    today = timezone.now().date()
+    thirty_days_ago = today - timedelta(days=29)
     
-    # Get top selling item for actual vs predicted chart
-    top_item = Transaction.objects.filter(
-        transaction_type='SALE',
-        payment_status='PAID'
-    ).values('item').annotate(
-        total_sold=Sum('quantity')
-    ).order_by('-total_sold').first()
-    
-    actual_vs_predicted = None
-    if top_item:
-        actual_vs_predicted = analytics.generate_actual_vs_predicted_chart(
-            item_id=top_item['item'], days=14
+    # --- 1. Sales Trend (last 30 days) ---
+    sales_by_day = (
+        Transaction.objects.filter(
+            transaction_type='SALE',
+            payment_status='PAID',
+            timestamp__date__gte=thirty_days_ago,
         )
+        .annotate(day=TruncDate('timestamp'))
+        .values('day')
+        .annotate(qty=Sum('quantity'))
+        .order_by('day')
+    )
+    day_map = {r['day']: r['qty'] for r in sales_by_day}
+    trend_labels = []
+    trend_data = []
+    for i in range(30):
+        d = thirty_days_ago + timedelta(days=i)
+        trend_labels.append(d.strftime('%b %d'))
+        trend_data.append(day_map.get(d, 0))
+
+    # --- 2. Top 5 Selling Products ---
+    top_products = (
+        Transaction.objects.filter(
+            transaction_type='SALE',
+            payment_status='PAID',
+        )
+        .values('item__name')
+        .annotate(total_qty=Sum('quantity'))
+        .order_by('-total_qty')[:5]
+    )
+    top_labels = [p['item__name'] for p in top_products]
+    top_data = [p['total_qty'] for p in top_products]
+
+    # --- 3. Monthly Revenue (last 6 months) ---
+    six_months_ago = today.replace(day=1) - timedelta(days=150)
+    monthly_revenue = (
+        Transaction.objects.filter(
+            transaction_type='SALE',
+            payment_status='PAID',
+            timestamp__date__gte=six_months_ago,
+        )
+        .annotate(month=TruncMonth('timestamp'))
+        .values('month')
+        .annotate(revenue=Sum('total_amount'))
+        .order_by('month')
+    )
+    rev_labels = [r['month'].strftime('%b %Y') for r in monthly_revenue]
+    rev_data = [float(r['revenue']) for r in monthly_revenue]
+
+    # --- 4. Stock Distribution (pie) ---
+    items_qs = Item.objects.all()
+    stock_labels = [item.name for item in items_qs]
+    stock_data = [item.quantity for item in items_qs]
+
+    # --- 5. Purchase vs Sales comparison (last 6 months) ---
+    monthly_purchases = (
+        Transaction.objects.filter(
+            transaction_type='PURCHASE',
+            payment_status='PAID',
+            timestamp__date__gte=six_months_ago,
+        )
+        .annotate(month=TruncMonth('timestamp'))
+        .values('month')
+        .annotate(total=Sum('total_amount'))
+        .order_by('month')
+    )
+    # Build unified month list
+    all_months_set = set(r['month'].strftime('%b %Y') for r in monthly_revenue)
+    all_months_set.update(r['month'].strftime('%b %Y') for r in monthly_purchases)
+    all_months = sorted(all_months_set, key=lambda m: datetime.strptime(m, '%b %Y'))
     
+    rev_map = {r['month'].strftime('%b %Y'): float(r['revenue']) for r in monthly_revenue}
+    pur_map = {r['month'].strftime('%b %Y'): float(r['total']) for r in monthly_purchases}
+    compare_labels = all_months
+    compare_sales = [rev_map.get(m, 0) for m in all_months]
+    compare_purchases = [pur_map.get(m, 0) for m in all_months]
+
+    # --- Summary stats ---
+    total_sales_amount = Transaction.objects.filter(
+        transaction_type='SALE', payment_status='PAID'
+    ).aggregate(t=Sum('total_amount'))['t'] or 0
+    total_purchase_amount = Transaction.objects.filter(
+        transaction_type='PURCHASE', payment_status='PAID'
+    ).aggregate(t=Sum('total_amount'))['t'] or 0
+    total_transactions = Transaction.objects.count()
+    total_items = Item.objects.count()
+
     context = UserRoleManager.get_context_for_user(request.user)
     context.update({
-        'sales_trend': sales_trend,
-        'inventory_performance': inventory_performance,
-        'ai_performance': ai_performance,
-        'actual_vs_predicted': actual_vs_predicted,
+        'trend_labels': json.dumps(trend_labels),
+        'trend_data': json.dumps(trend_data),
+        'top_labels': json.dumps(top_labels),
+        'top_data': json.dumps(top_data),
+        'rev_labels': json.dumps(rev_labels),
+        'rev_data': json.dumps(rev_data),
+        'stock_labels': json.dumps(stock_labels),
+        'stock_data': json.dumps(stock_data),
+        'compare_labels': json.dumps(compare_labels),
+        'compare_sales': json.dumps(compare_sales),
+        'compare_purchases': json.dumps(compare_purchases),
+        'total_sales_amount': total_sales_amount,
+        'total_purchase_amount': total_purchase_amount,
+        'total_transactions': total_transactions,
+        'total_items': total_items,
     })
     
     return render(request, 'inventory/analytics_dashboard.html', context)
@@ -1354,4 +1441,4 @@ def monthly_report(request):
     })
     
     return render(request, 'inventory/monthly_report.html', context)
-    return render(request, 'inventory/monthly_report.html', context)
+

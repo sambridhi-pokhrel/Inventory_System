@@ -7,6 +7,7 @@ from django.contrib.auth.views import PasswordResetView, PasswordResetConfirmVie
 from django.urls import reverse_lazy
 from django.utils import timezone
 from django.core.exceptions import PermissionDenied
+from datetime import timedelta
 from .forms import CustomUserCreationForm, CustomPasswordResetForm
 from .models import UserProfile
 from .decorators import (
@@ -212,6 +213,38 @@ def dashboard(request):
     # Get AI notification summary for dashboard widgets
     notification_summary = notification_manager.get_notification_summary()
     
+    # Mini chart data for dashboard
+    import json
+    from datetime import timedelta
+    from django.db.models import Sum
+    from django.db.models.functions import TruncDate
+    from inventory.models import Transaction
+    today_date = timezone.now().date()
+    seven_days_ago = today_date - timedelta(days=6)
+    sales_by_day = (
+        Transaction.objects.filter(
+            transaction_type='SALE',
+            payment_status='PAID',
+            timestamp__date__gte=seven_days_ago,
+        )
+        .annotate(day=TruncDate('timestamp'))
+        .values('day')
+        .annotate(total=Sum('total_amount'))
+        .order_by('day')
+    )
+    day_map = {r['day']: float(r['total']) for r in sales_by_day}
+    mini_labels = [(seven_days_ago + timedelta(days=i)).strftime('%a') for i in range(7)]
+    mini_data = [day_map.get(seven_days_ago + timedelta(days=i), 0) for i in range(7)]
+    
+    # Recent transactions summary
+    from inventory.models import Transaction as Txn
+    recent_sales_total = Transaction.objects.filter(
+        transaction_type='SALE', payment_status='PAID'
+    ).aggregate(t=Sum('total_amount'))['t'] or 0
+    recent_purchases_total = Transaction.objects.filter(
+        transaction_type='PURCHASE', payment_status='PAID'
+    ).aggregate(t=Sum('total_amount'))['t'] or 0
+    
     # Update context with dashboard data
     context.update({
         "user": request.user,
@@ -222,6 +255,10 @@ def dashboard(request):
         "recent_items": recent_items,
         "low_stock_items_list": low_stock_items[:5],  # Renamed to avoid conflict
         "notification_summary": notification_summary,  # AI notification data
+        "mini_labels": json.dumps(mini_labels),
+        "mini_data": json.dumps(mini_data),
+        "recent_sales_total": recent_sales_total,
+        "recent_purchases_total": recent_purchases_total,
     })
     
     # Add admin-specific data

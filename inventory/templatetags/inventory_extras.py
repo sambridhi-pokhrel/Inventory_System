@@ -53,3 +53,12 @@ def can_edit_items(user):
 def can_delete_items(user):
     """Check if user can delete items"""
     return user.is_superuser
+
+
+@register.filter
+def subtract(value, arg):
+    """Subtract arg from value"""
+    try:
+        return float(value) - float(arg)
+    except (ValueError, TypeError):
+        return 0
