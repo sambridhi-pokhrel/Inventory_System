@@ -610,3 +610,142 @@
   </script>
 </body>
 </html>
+
+  <!-- ── Chatbot Widget ─────────────────────────────────────── -->
+  <style>
+    #chat-fab {
+      position: fixed; bottom: 28px; right: 28px; z-index: 1050;
+      width: 54px; height: 54px; border-radius: 50%;
+      background: linear-gradient(135deg, #714b67, #9c7a8a);
+      color: #fff; border: none; box-shadow: 0 4px 16px rgba(113,75,103,.45);
+      font-size: 22px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+      transition: transform .2s;
+    }
+    #chat-fab:hover { transform: scale(1.08); }
+    #chat-window {
+      position: fixed; bottom: 92px; right: 28px; z-index: 1049;
+      width: 340px; max-height: 480px;
+      background: #fff; border-radius: 14px;
+      box-shadow: 0 8px 32px rgba(113,75,103,.22);
+      display: none; flex-direction: column; overflow: hidden;
+    }
+    #chat-window.open { display: flex; }
+    #chat-header {
+      background: linear-gradient(135deg, #714b67, #9c7a8a);
+      color: #fff; padding: 12px 16px;
+      display: flex; align-items: center; justify-content: space-between;
+      font-weight: 600; font-size: 14px;
+    }
+    #chat-header span { opacity: .75; font-size: 11px; font-weight: 400; }
+    #chat-close { background: none; border: none; color: #fff; font-size: 18px; cursor: pointer; line-height: 1; }
+    #chat-messages {
+      flex: 1; overflow-y: auto; padding: 14px 12px;
+      display: flex; flex-direction: column; gap: 8px;
+      background: #faf8fb;
+    }
+    .chat-msg { max-width: 88%; padding: 8px 12px; border-radius: 10px; font-size: 13px; line-height: 1.5; white-space: pre-wrap; }
+    .chat-msg.bot { background: #f0e8ee; color: #3a2030; align-self: flex-start; border-bottom-left-radius: 3px; }
+    .chat-msg.user { background: #714b67; color: #fff; align-self: flex-end; border-bottom-right-radius: 3px; }
+    .chat-link { display: inline-block; margin-top: 5px; font-size: 11px; color: #714b67; text-decoration: underline; }
+    #chat-input-row { display: flex; border-top: 1px solid #ede0ea; background: #fff; }
+    #chat-input {
+      flex: 1; border: none; outline: none; padding: 10px 12px; font-size: 13px;
+      background: transparent;
+    }
+    #chat-send {
+      background: #714b67; color: #fff; border: none; padding: 0 16px;
+      cursor: pointer; font-size: 16px; transition: background .2s;
+    }
+    #chat-send:hover { background: #5a3a54; }
+    .chat-typing { font-size: 12px; color: #9c7a8a; align-self: flex-start; padding: 4px 8px; }
+  </style>
+
+  <!-- FAB button -->
+  <button id="chat-fab" title="Inventory Assistant" onclick="toggleChat()">
+    <i class="bi bi-chat-dots-fill"></i>
+  </button>
+
+  <!-- Chat window -->
+  <div id="chat-window">
+    <div id="chat-header">
+      <div>
+        <i class="bi bi-robot me-2"></i>Inventory Assistant
+        <br><span>Ask me about stock, sales, reports...</span>
+      </div>
+      <button id="chat-close" onclick="toggleChat()" title="Close">×</button>
+    </div>
+    <div id="chat-messages">
+      <div class="chat-msg bot">Hi! I'm your inventory assistant. Type <strong>help</strong> to see what I can do, or ask me anything about the system.</div>
+    </div>
+    <div id="chat-input-row">
+      <input id="chat-input" type="text" placeholder="Ask something..." autocomplete="off"
+             onkeydown="if(event.key==='Enter') sendChat()">
+      <button id="chat-send" onclick="sendChat()" title="Send"><i class="bi bi-send-fill"></i></button>
+    </div>
+  </div>
+
+  <script>
+    const CHATBOT_URL = "{% url 'inventory:chatbot_api' %}";
+    const CSRF = "{{ csrf_token }}";
+
+    function toggleChat() {
+      const win = document.getElementById('chat-window');
+      win.classList.toggle('open');
+      if (win.classList.contains('open')) {
+        document.getElementById('chat-input').focus();
+      }
+    }
+
+    function appendMsg(text, role, links) {
+      const box = document.getElementById('chat-messages');
+      const div = document.createElement('div');
+      div.className = 'chat-msg ' + role;
+      div.textContent = text;
+      if (links && links.length) {
+        links.forEach(l => {
+          const a = document.createElement('a');
+          a.href = l.url; a.textContent = l.label;
+          a.className = 'chat-link d-block';
+          div.appendChild(a);
+        });
+      }
+      box.appendChild(div);
+      box.scrollTop = box.scrollHeight;
+    }
+
+    function showTyping() {
+      const box = document.getElementById('chat-messages');
+      const t = document.createElement('div');
+      t.className = 'chat-typing'; t.id = 'chat-typing'; t.textContent = 'Thinking...';
+      box.appendChild(t);
+      box.scrollTop = box.scrollHeight;
+    }
+
+    function removeTyping() {
+      const t = document.getElementById('chat-typing');
+      if (t) t.remove();
+    }
+
+    async function sendChat() {
+      const input = document.getElementById('chat-input');
+      const msg = input.value.trim();
+      if (!msg) return;
+      input.value = '';
+      appendMsg(msg, 'user');
+      showTyping();
+      try {
+        const res = await fetch(CHATBOT_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+          body: JSON.stringify({ message: msg })
+        });
+        const data = await res.json();
+        removeTyping();
+        appendMsg(data.reply || 'Sorry, something went wrong.', 'bot', data.links);
+      } catch (e) {
+        removeTyping();
+        appendMsg('Connection error. Please try again.', 'bot');
+      }
+    }
+  </script>
+</body>

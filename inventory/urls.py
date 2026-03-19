@@ -43,4 +43,5 @@ urlpatterns = [
     
     # AJAX URLs
     path("api/item-price/", views.get_item_price, name="get_item_price"),
+    path("api/chatbot/", views.chatbot_api, name="chatbot_api"),
 ]

@@ -1442,3 +1442,26 @@ def monthly_report(request):
     
     return render(request, 'inventory/monthly_report.html', context)
 
+
+
+# ==================== CHATBOT VIEW ====================
+
+@approved_user_required
+def chatbot_api(request):
+    """Process chatbot messages and return JSON responses"""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+
+    import json as _json
+    try:
+        body = _json.loads(request.body)
+        message = body.get('message', '').strip()
+    except Exception:
+        message = request.POST.get('message', '').strip()
+
+    if not message:
+        return JsonResponse({'reply': 'Please type a message.'})
+
+    from .chatbot import get_chatbot_response
+    response = get_chatbot_response(message)
+    return JsonResponse(response)
