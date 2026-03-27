@@ -98,7 +98,7 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 LOGIN_URL = '/users/login/'
 LOGIN_REDIRECT_URL = '/users/dashboard/'
-LOGOUT_REDIRECT_URL = '/users/login/'
+LOGOUT_REDIRECT_URL = '/'
 
 # ── Email Configuration ───────────────────────────────────────────────────────
 # Reads credentials from environment variables or .env file.

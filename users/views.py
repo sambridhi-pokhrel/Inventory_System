@@ -274,10 +274,10 @@ def dashboard(request):
 
 
 def logout_view(request):
-    """Simple logout view that works with GET requests"""
+    """Logout — redirects to landing page"""
     logout(request)
     messages.success(request, 'You have been successfully logged out.')
-    return redirect('users:login')
+    return redirect('landing')
 
 
 class CustomPasswordResetView(PasswordResetView):
@@ -299,3 +299,40 @@ def landing_view(request):
         return redirect('users:dashboard')
     
     return render(request, 'landing.html')
+
+
+@approved_user_required
+def profile_view(request):
+    """User profile page — read-only, accessible to all roles"""
+    from inventory.models import Transaction, Item
+    from django.db.models import Sum, Count
+
+    user = request.user
+    role = UserRoleManager.get_user_role(user)
+
+    # Get UserProfile safely
+    try:
+        profile = user.userprofile
+    except Exception:
+        profile = None
+
+    # Activity stats
+    transactions_performed = Transaction.all_objects.filter(performed_by=user).count()
+    items_created = Item.all_objects.filter(created_by=user).count()
+    sales_total = Transaction.all_objects.filter(
+        performed_by=user, transaction_type='SALE', payment_status='PAID'
+    ).aggregate(t=Sum('total_amount'))['t'] or 0
+    purchases_total = Transaction.all_objects.filter(
+        performed_by=user, transaction_type='PURCHASE', payment_status='PAID'
+    ).aggregate(t=Sum('total_amount'))['t'] or 0
+
+    context = UserRoleManager.get_context_for_user(user)
+    context.update({
+        'profile': profile,
+        'role': role,
+        'transactions_performed': transactions_performed,
+        'items_created': items_created,
+        'sales_total': sales_total,
+        'purchases_total': purchases_total,
+    })
+    return render(request, 'users/profile.html', context)

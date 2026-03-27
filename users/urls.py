@@ -10,6 +10,7 @@ urlpatterns = [
     path('basic-login/', views.basic_login_view, name='basic_login'),
     path('register/', views.register_view, name='register'),
     path('dashboard/', views.dashboard, name='dashboard'),
+    path('profile/', views.profile_view, name='profile'),
     path('logout/', views.logout_view, name='logout'),
     
     # User Management (Admin only)

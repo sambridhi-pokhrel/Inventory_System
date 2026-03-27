@@ -53,6 +53,13 @@
         </li>
 
         <li class="nav-item">
+          <a class="nav-pill {% if active == 'monthly' %}nav-active{% endif %}"
+             href="{% url 'inventory:monthly_report' %}">
+            <i class="bi bi-calendar-month"></i>Monthly Report
+          </a>
+        </li>
+
+        <li class="nav-item">
           <a class="nav-pill {% if active == 'ai' %}nav-active{% endif %}"
              href="{% url 'inventory:reorder_suggestions' %}">
             <i class="bi bi-robot"></i>AI Tools
@@ -89,6 +96,12 @@
               </span>
             </li>
             <li><hr class="dropdown-divider my-1"></li>
+            <li>
+              <a class="dropdown-item rounded py-2" href="{% url 'users:profile' %}"
+                 style="font-size:.9rem;color:#3a2030;">
+                <i class="bi bi-person-circle me-2 text-primary"></i>My Profile
+              </a>
+            </li>
             <li>
               <a class="dropdown-item rounded py-2" href="{% url 'users:logout' %}"
                  style="font-size:.9rem;color:#3a2030;">
