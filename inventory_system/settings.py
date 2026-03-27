@@ -3,6 +3,15 @@ import os
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Load .env file if python-dotenv is available (optional but recommended)
+try:
+    from dotenv import load_dotenv
+    load_dotenv(BASE_DIR / '.env')
+except ImportError:
+    pass
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+
 SECRET_KEY = 'django-insecure-j*@n4bm0(-g(u5s9g^7+8v7q88$_nii46psh%xs-ef_=0v$djw'
 
 DEBUG = True
@@ -91,8 +100,33 @@ LOGIN_URL = '/users/login/'
 LOGIN_REDIRECT_URL = '/users/dashboard/'
 LOGOUT_REDIRECT_URL = '/users/login/'
 
-# Email Configuration (for development - prints to console)
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+# ── Email Configuration ───────────────────────────────────────────────────────
+# Reads credentials from environment variables or .env file.
+# To use Gmail SMTP:
+#   1. Enable 2-Step Verification on your Google account
+#   2. Generate an App Password at https://myaccount.google.com/apppasswords
+#   3. Create a .env file in the project root (same folder as manage.py):
+#        EMAIL_HOST_USER=yourgmail@gmail.com
+#        EMAIL_HOST_PASSWORD=your_16_char_app_password
+#   4. Restart the server
+
+_email_user = os.environ.get('EMAIL_HOST_USER', '')
+_email_pass = os.environ.get('EMAIL_HOST_PASSWORD', '')
+
+if _email_user and _email_pass:
+    # Real SMTP — sends actual emails
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+    EMAIL_HOST = 'smtp.gmail.com'
+    EMAIL_PORT = 587
+    EMAIL_USE_TLS = True
+    EMAIL_HOST_USER = _email_user
+    EMAIL_HOST_PASSWORD = _email_pass
+    DEFAULT_FROM_EMAIL = f'Inventory System <{_email_user}>'
+    SERVER_EMAIL = _email_user
+else:
+    # Fallback — prints emails to the console (safe for development)
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+    DEFAULT_FROM_EMAIL = 'Inventory System <noreply@inventorysystem.com>'
 
 # Unsplash API Configuration for automatic product image fetching
 # Get your free API key from: https://unsplash.com/developers
@@ -131,14 +165,5 @@ ESEWA_ENABLED = False  # Set to True when eSewa test environment is accessible
 
 # Payment Gateway Simulation Mode (for testing when gateways are unavailable)
 PAYMENT_SIMULATION_MODE = True  # Set to False in production
-
-# For production, use SMTP:
-# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-# EMAIL_HOST = 'smtp.gmail.com'
-# EMAIL_PORT = 587
-# EMAIL_USE_TLS = True
-# EMAIL_HOST_USER = 'your-email@gmail.com'
-# EMAIL_HOST_PASSWORD = 'your-app-password'
-# DEFAULT_FROM_EMAIL = 'Inventory System <your-email@gmail.com>'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
