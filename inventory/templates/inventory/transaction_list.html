@@ -1,415 +1,226 @@
+{% extends 'base.html' %}
 {% load inventory_extras %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Transaction History - Inventory Management</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link href="/static/css/emerald-theme.css?v=2" rel="stylesheet">
-</head>
-<body class="fade-in">
-    {% include 'partials/_navbar.html' with active='transactions' %}
 
-    <!-- Header Section -->
-    <div class="dashboard-header">
-        <div class="container">
-            <div class="row align-items-center">
-                <div class="col-md-8">
-                    <h1 class="display-5 fw-bold mb-2">
-                        <i class="bi bi-receipt me-3"></i>
-                        Transaction History
-                    </h1>
-                    <p class="lead mb-0">Track all sales and purchase transactions</p>
-                </div>
-                <div class="col-md-4 text-md-end">
-                    <div class="role-badge slide-up">
-                        <i class="bi bi-shield-check"></i>
-                        {{ user|get_user_role|title }} Access
-                    </div>
-                </div>
-            </div>
-        </div>
+{% block title %}Transaction History | Inventory System{% endblock %}
+
+{% block header %}
+<div class="dashboard-header">
+  <div class="container">
+    <div class="row align-items-center">
+      <div class="col-md-8">
+        <h1 class="display-5 fw-bold mb-2"><i class="bi bi-receipt me-3"></i>Transaction History</h1>
+        <p class="lead mb-0">Track all sales and purchase transactions</p>
+      </div>
+      <div class="col-md-4 text-md-end">
+        <a href="{% url 'users:dashboard' %}" class="btn btn-outline-light">
+          <i class="bi bi-arrow-left me-1"></i>Back to Dashboard
+        </a>
+      </div>
     </div>
+  </div>
+</div>
+{% endblock %}
 
-    <!-- Messages -->
-    {% if messages %}
-        <div class="container mb-4">
-            {% for message in messages %}
-                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-                    {% if message.tags == 'error' %}
-                        <i class="bi bi-exclamation-triangle me-2"></i>
-                    {% elif message.tags == 'success' %}
-                        <i class="bi bi-check-circle me-2"></i>
-                    {% else %}
-                        <i class="bi bi-info-circle me-2"></i>
-                    {% endif %}
-                    {{ message }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+{% block content %}
+<div class="container">
+  <div class="row mb-4">
+    <div class="col-md-6">
+      {% if user|get_user_role == 'admin' or user|get_user_role == 'manager' %}
+        <a href="{% url 'inventory:transaction_create' %}" class="btn btn-primary me-2">
+          <i class="bi bi-plus-circle me-1"></i>New Transaction
+        </a>
+      {% endif %}
+      <a href="{% url 'inventory:transaction_export_csv' %}" class="btn btn-outline-primary">
+        <i class="bi bi-download me-1"></i>Export CSV
+      </a>
+    </div>
+    <div class="col-md-6">
+      <form method="get" class="d-flex gap-2 flex-wrap">
+        <select name="type" class="form-select" style="max-width:120px;">
+          <option value="">All Types</option>
+          <option value="SALE" {% if filters.type == 'SALE' %}selected{% endif %}>Sales</option>
+          <option value="PURCHASE" {% if filters.type == 'PURCHASE' %}selected{% endif %}>Purchases</option>
+        </select>
+        <select name="payment_status" class="form-select" style="max-width:120px;">
+          <option value="">All Status</option>
+          <option value="PAID" {% if filters.payment_status == 'PAID' %}selected{% endif %}>Paid</option>
+          <option value="PENDING" {% if filters.payment_status == 'PENDING' %}selected{% endif %}>Pending</option>
+          <option value="FAILED" {% if filters.payment_status == 'FAILED' %}selected{% endif %}>Failed</option>
+        </select>
+        <input type="date" name="date_from" class="form-control" value="{{ filters.date_from }}" style="max-width:150px;">
+        <input type="date" name="date_to" class="form-control" value="{{ filters.date_to }}" style="max-width:150px;">
+        <button type="submit" class="btn btn-outline-primary"><i class="bi bi-funnel"></i></button>
+        {% if filters.type or filters.payment_status or filters.date_from or filters.date_to %}
+          <a href="{% url 'inventory:transaction_list' %}" class="btn btn-outline-secondary"><i class="bi bi-x"></i></a>
+        {% endif %}
+      </form>
+    </div>
+  </div>
+
+  <div class="row mb-4">
+    <div class="col-lg-3 col-md-6 mb-3">
+      <div class="stat-card success"><div class="card-body text-center">
+        <i class="bi bi-arrow-up-circle display-6 text-success mb-2"></i>
+        <h4 class="fw-bold text-success">{{ total_sales|rupees|default:"Rs. 0.00" }}</h4>
+        <p class="text-muted mb-0">Total Sales (Paid)</p>
+      </div></div>
+    </div>
+    <div class="col-lg-3 col-md-6 mb-3">
+      <div class="stat-card info"><div class="card-body text-center">
+        <i class="bi bi-arrow-down-circle display-6 text-info mb-2"></i>
+        <h4 class="fw-bold text-info">{{ total_purchases|rupees|default:"Rs. 0.00" }}</h4>
+        <p class="text-muted mb-0">Total Purchases</p>
+      </div></div>
+    </div>
+    <div class="col-lg-3 col-md-6 mb-3">
+      <div class="stat-card primary"><div class="card-body text-center">
+        <i class="bi bi-graph-up-arrow display-6 text-primary mb-2"></i>
+        <h4 class="fw-bold text-primary">{{ total_profit|rupees|default:"Rs. 0.00" }}</h4>
+        <p class="text-muted mb-0">Total Profit</p>
+      </div></div>
+    </div>
+    <div class="col-lg-3 col-md-6 mb-3">
+      <div class="stat-card warning"><div class="card-body text-center">
+        <i class="bi bi-clock display-6 text-warning mb-2"></i>
+        <h4 class="fw-bold text-warning">{{ pending_payments|rupees|default:"Rs. 0.00" }}</h4>
+        <p class="text-muted mb-0">Pending Payments</p>
+      </div></div>
+    </div>
+  </div>
+
+  <div class="row mb-4">
+    <div class="col-lg-6 mb-4">
+      <div class="card h-100">
+        <div class="card-header bg-light">
+          <h5 class="card-title mb-0"><i class="bi bi-arrow-up-circle me-2 text-success"></i>Recent Sales</h5>
+        </div>
+        <div class="card-body p-0">
+          {% if recent_sales %}
+          <div class="list-group list-group-flush">
+            {% for t in recent_sales %}
+            <div class="list-group-item">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <h6 class="mb-1 fw-bold"><i class="bi bi-box me-2 text-primary"></i>{{ t.item.name }}</h6>
+                  <small class="text-muted"><i class="bi bi-calendar3 me-1"></i>{{ t.timestamp|date:"M d, Y" }} &bull; {{ t.quantity }} units</small>
                 </div>
+                <div class="text-end">
+                  <div class="fw-bold text-success mb-1">{{ t.total_amount|rupees }}</div>
+                  <span class="badge bg-{% if t.payment_status == 'PAID' %}success{% elif t.payment_status == 'PENDING' %}warning{% else %}danger{% endif %}">{{ t.payment_status|title }}</span>
+                </div>
+              </div>
+            </div>
             {% endfor %}
+          </div>
+          <div class="card-footer bg-light text-center">
+            <a href="{% url 'inventory:transaction_list' %}?type=SALE" class="text-primary text-decoration-none">View All Sales <i class="bi bi-arrow-right ms-1"></i></a>
+          </div>
+          {% else %}
+          <div class="text-center py-5"><i class="bi bi-arrow-up-circle display-4 text-muted mb-3"></i><p class="text-muted mb-0">No sales recorded yet</p></div>
+          {% endif %}
         </div>
-    {% endif %}
-
-    <!-- Main Content -->
-    <div class="container">
-        <!-- Action Bar -->
-        <div class="row mb-4">
-            <div class="col-md-6">
-                {% if user|get_user_role == 'admin' or user|get_user_role == 'manager' %}
-                    <a href="{% url 'inventory:transaction_create' %}" class="btn btn-primary me-2">
-                        <i class="bi bi-plus-circle me-1"></i>New Transaction
-                    </a>
-                {% endif %}
-                <a href="{% url 'inventory:transaction_export_csv' %}" class="btn btn-outline-primary">
-                    <i class="bi bi-download me-1"></i>Export CSV
-                </a>
-            </div>
-            <div class="col-md-6">
-                <!-- Filter Form -->
-                <form method="get" class="d-flex gap-2">
-                    <select name="type" class="form-select" style="max-width: 120px;">
-                        <option value="">All Types</option>
-                        <option value="SALE" {% if filters.type == 'SALE' %}selected{% endif %}>Sales</option>
-                        <option value="PURCHASE" {% if filters.type == 'PURCHASE' %}selected{% endif %}>Purchases</option>
-                    </select>
-                    <select name="payment_status" class="form-select" style="max-width: 120px;">
-                        <option value="">All Status</option>
-                        <option value="PAID" {% if filters.payment_status == 'PAID' %}selected{% endif %}>Paid</option>
-                        <option value="PENDING" {% if filters.payment_status == 'PENDING' %}selected{% endif %}>Pending</option>
-                        <option value="FAILED" {% if filters.payment_status == 'FAILED' %}selected{% endif %}>Failed</option>
-                    </select>
-                    <input type="date" name="date_from" class="form-control" value="{{ filters.date_from }}" 
-                           style="max-width: 150px;" placeholder="From Date">
-                    <input type="date" name="date_to" class="form-control" value="{{ filters.date_to }}" 
-                           style="max-width: 150px;" placeholder="To Date">
-                    <button type="submit" class="btn btn-outline-primary">
-                        <i class="bi bi-funnel"></i>
-                    </button>
-                    {% if filters.type or filters.payment_status or filters.date_from or filters.date_to %}
-                        <a href="{% url 'inventory:transaction_list' %}" class="btn btn-outline-secondary">
-                            <i class="bi bi-x"></i>
-                        </a>
-                    {% endif %}
-                </form>
-            </div>
-        </div>
-
-        <!-- Transaction Summary Cards -->
-        <div class="row mb-4">
-            <div class="col-lg-3 col-md-6 mb-3">
-                <div class="stat-card success">
-                    <div class="card-body text-center">
-                        <i class="bi bi-arrow-up-circle display-6 text-success mb-2"></i>
-                        <h4 class="fw-bold text-success">{{ total_sales|rupees|default:"Rs. 0.00" }}</h4>
-                        <p class="text-muted mb-0">Total Sales (Paid)</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-lg-3 col-md-6 mb-3">
-                <div class="stat-card info">
-                    <div class="card-body text-center">
-                        <i class="bi bi-arrow-down-circle display-6 text-info mb-2"></i>
-                        <h4 class="fw-bold text-info">{{ total_purchases|rupees|default:"Rs. 0.00" }}</h4>
-                        <p class="text-muted mb-0">Total Purchases</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-lg-3 col-md-6 mb-3">
-                <div class="stat-card primary">
-                    <div class="card-body text-center">
-                        <i class="bi bi-graph-up-arrow display-6 text-primary mb-2"></i>
-                        <h4 class="fw-bold text-primary">{{ total_profit|rupees|default:"Rs. 0.00" }}</h4>
-                        <p class="text-muted mb-0">Total Profit</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-lg-3 col-md-6 mb-3">
-                <div class="stat-card warning">
-                    <div class="card-body text-center">
-                        <i class="bi bi-clock display-6 text-warning mb-2"></i>
-                        <h4 class="fw-bold text-warning">{{ pending_payments|rupees|default:"Rs. 0.00" }}</h4>
-                        <p class="text-muted mb-0">Pending Payments</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Recent Sales and Purchases Sections -->
-        <div class="row mb-4">
-            <!-- Recent Sales -->
-            <div class="col-lg-6 mb-4">
-                <div class="card h-100">
-                    <div class="card-header bg-light">
-                        <h5 class="card-title mb-0">
-                            <i class="bi bi-arrow-up-circle me-2 text-success"></i>
-                            Recent Sales
-                        </h5>
-                    </div>
-                    <div class="card-body p-0">
-                        {% if recent_sales %}
-                            <div class="list-group list-group-flush">
-                                {% for transaction in recent_sales %}
-                                    <div class="list-group-item">
-                                        <div class="d-flex justify-content-between align-items-start">
-                                            <div class="flex-grow-1">
-                                                <div class="d-flex align-items-center mb-2">
-                                                    <i class="bi bi-box me-2 text-primary"></i>
-                                                    <h6 class="mb-0 fw-bold">{{ transaction.item.name }}</h6>
-                                                </div>
-                                                <div class="d-flex gap-3 text-muted small">
-                                                    <span>
-                                                        <i class="bi bi-calendar3 me-1"></i>
-                                                        {{ transaction.timestamp|date:"M d, Y" }}
-                                                    </span>
-                                                    <span>
-                                                        <i class="bi bi-box-seam me-1"></i>
-                                                        {{ transaction.quantity }} units
-                                                    </span>
-                                                </div>
-                                            </div>
-                                            <div class="text-end">
-                                                <div class="fw-bold text-success mb-1">
-                                                    {{ transaction.total_amount|rupees }}
-                                                </div>
-                                                {% if transaction.payment_status == 'PAID' %}
-                                                    <span class="badge bg-success">Paid</span>
-                                                {% elif transaction.payment_status == 'PENDING' %}
-                                                    <span class="badge bg-warning">Pending</span>
-                                                {% else %}
-                                                    <span class="badge bg-danger">Failed</span>
-                                                {% endif %}
-                                            </div>
-                                        </div>
-                                    </div>
-                                {% endfor %}
-                            </div>
-                            <div class="card-footer bg-light text-center">
-                                <a href="{% url 'inventory:transaction_list' %}?type=SALE" class="text-primary text-decoration-none">
-                                    View All Sales <i class="bi bi-arrow-right ms-1"></i>
-                                </a>
-                            </div>
-                        {% else %}
-                            <div class="text-center py-5">
-                                <i class="bi bi-arrow-up-circle display-4 text-muted mb-3"></i>
-                                <p class="text-muted mb-0">No sales recorded yet</p>
-                            </div>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-
-            <!-- Recent Purchases -->
-            <div class="col-lg-6 mb-4">
-                <div class="card h-100">
-                    <div class="card-header bg-light">
-                        <h5 class="card-title mb-0">
-                            <i class="bi bi-arrow-down-circle me-2 text-info"></i>
-                            Recent Purchases
-                        </h5>
-                    </div>
-                    <div class="card-body p-0">
-                        {% if recent_purchases %}
-                            <div class="list-group list-group-flush">
-                                {% for transaction in recent_purchases %}
-                                    <div class="list-group-item">
-                                        <div class="d-flex justify-content-between align-items-start">
-                                            <div class="flex-grow-1">
-                                                <div class="d-flex align-items-center mb-2">
-                                                    <i class="bi bi-box me-2 text-primary"></i>
-                                                    <h6 class="mb-0 fw-bold">{{ transaction.item.name }}</h6>
-                                                </div>
-                                                <div class="d-flex gap-3 text-muted small">
-                                                    <span>
-                                                        <i class="bi bi-calendar3 me-1"></i>
-                                                        {{ transaction.timestamp|date:"M d, Y" }}
-                                                    </span>
-                                                    <span>
-                                                        <i class="bi bi-box-seam me-1"></i>
-                                                        {{ transaction.quantity }} units
-                                                    </span>
-                                                </div>
-                                            </div>
-                                            <div class="text-end">
-                                                <div class="fw-bold text-info mb-1">
-                                                    {{ transaction.total_amount|rupees }}
-                                                </div>
-                                                {% if transaction.payment_status == 'PAID' %}
-                                                    <span class="badge bg-success">Paid</span>
-                                                {% elif transaction.payment_status == 'PENDING' %}
-                                                    <span class="badge bg-warning">Pending</span>
-                                                {% else %}
-                                                    <span class="badge bg-danger">Failed</span>
-                                                {% endif %}
-                                            </div>
-                                        </div>
-                                    </div>
-                                {% endfor %}
-                            </div>
-                            <div class="card-footer bg-light text-center">
-                                <a href="{% url 'inventory:transaction_list' %}?type=PURCHASE" class="text-primary text-decoration-none">
-                                    View All Purchases <i class="bi bi-arrow-right ms-1"></i>
-                                </a>
-                            </div>
-                        {% else %}
-                            <div class="text-center py-5">
-                                <i class="bi bi-arrow-down-circle display-4 text-muted mb-3"></i>
-                                <p class="text-muted mb-0">No purchases recorded yet</p>
-                            </div>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- All Transactions Table (Filtered View) -->
-        <div class="card">
-            <div class="card-header bg-light">
-                <h5 class="card-title mb-0">
-                    <i class="bi bi-list-ul me-2 text-primary"></i>
-                    All Transactions
-                    {% if filters.type or filters.payment_status or filters.date_from or filters.date_to %}
-                        <span class="badge bg-primary ms-2">Filtered</span>
-                    {% endif %}
-                </h5>
-            </div>
-            <div class="card-body p-0">
-                {% if transactions %}
-                    <div class="table-responsive" style="overflow-x: auto;">
-                        <table class="table table-hover mb-0" style="min-width: 1200px;">
-                            <thead class="table-light">
-                                <tr>
-                                    <th style="min-width: 120px;">Date</th>
-                                    <th style="min-width: 90px;">Type</th>
-                                    <th style="min-width: 150px;">Item</th>
-                                    <th style="min-width: 80px; text-align: center;">Quantity</th>
-                                    <th style="min-width: 100px;">Unit Price</th>
-                                    <th style="min-width: 120px;">Total Amount</th>
-                                    <th style="min-width: 100px;">Profit</th>
-                                    <th style="min-width: 120px;">Payment</th>
-                                    <th style="min-width: 120px;">Performed By</th>
-                                    <th style="min-width: 100px; text-align: center;">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for transaction in transactions %}
-                                    <tr>
-                                        <td style="white-space: nowrap;">
-                                            <div class="d-flex align-items-center">
-                                                <i class="bi bi-calendar me-2 text-muted"></i>
-                                                <div>
-                                                    <div class="fw-bold">{{ transaction.timestamp|date:"M d, Y" }}</div>
-                                                    <small class="text-muted">{{ transaction.timestamp|time:"H:i" }}</small>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            {% if transaction.transaction_type == 'SALE' %}
-                                                <span class="badge bg-success">
-                                                    <i class="bi bi-arrow-up me-1"></i>Sale
-                                                </span>
-                                            {% else %}
-                                                <span class="badge bg-info">
-                                                    <i class="bi bi-arrow-down me-1"></i>Purchase
-                                                </span>
-                                            {% endif %}
-                                        </td>
-                                        <td>
-                                            <div class="d-flex align-items-center">
-                                                <i class="bi bi-box me-2 text-primary"></i>
-                                                <strong>{{ transaction.item.name }}</strong>
-                                            </div>
-                                        </td>
-                                        <td class="text-center">
-                                            <span class="fw-bold">{{ transaction.quantity }}</span>
-                                        </td>
-                                        <td style="white-space: nowrap;">
-                                            <span class="text-success fw-bold">{{ transaction.unit_price|rupees }}</span>
-                                        </td>
-                                        <td style="white-space: nowrap;">
-                                            <span class="text-primary fw-bold">{{ transaction.total_amount|rupees }}</span>
-                                        </td>
-                                        <td style="white-space: nowrap;">
-                                            {% if transaction.transaction_type == 'SALE' %}
-                                                <span class="text-success fw-bold">
-                                                    <i class="bi bi-graph-up-arrow me-1"></i>
-                                                    {{ transaction.total_profit|rupees }}
-                                                </span>
-                                            {% else %}
-                                                <span class="text-muted">-</span>
-                                            {% endif %}
-                                        </td>
-                                        <td>
-                                            <div>
-                                                {% if transaction.payment_status == 'PAID' %}
-                                                    <span class="badge bg-success">
-                                                        <i class="bi bi-check-circle me-1"></i>Paid
-                                                    </span>
-                                                {% elif transaction.payment_status == 'PENDING' %}
-                                                    <span class="badge bg-warning">
-                                                        <i class="bi bi-clock me-1"></i>Pending
-                                                    </span>
-                                                {% else %}
-                                                    <span class="badge bg-danger">
-                                                        <i class="bi bi-x-circle me-1"></i>Failed
-                                                    </span>
-                                                {% endif %}
-                                                <br>
-                                                <small class="text-muted">{{ transaction.payment_method }}</small>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <div class="d-flex align-items-center">
-                                                <i class="bi bi-person me-2 text-muted"></i>
-                                                <span>{{ transaction.performed_by.first_name|default:transaction.performed_by.username }}</span>
-                                            </div>
-                                        </td>
-                                        <td class="text-center">
-                                            <div class="btn-group btn-group-sm">
-                                                <a href="{% url 'inventory:transaction_detail' transaction.id %}" 
-                                                   class="btn btn-outline-primary" title="View Details">
-                                                    <i class="bi bi-eye"></i>
-                                                </a>
-                                                {% if transaction.payment_status == 'PENDING' and user|can_edit_items %}
-                                                    <a href="{% url 'inventory:process_payment' transaction.id %}" 
-                                                       class="btn btn-outline-success" title="Process Payment">
-                                                        <i class="bi bi-credit-card"></i>
-                                                    </a>
-                                                {% endif %}
-                                            </div>
-                                        </td>
-                                    </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                {% else %}
-                    <div class="text-center py-5">
-                        <i class="bi bi-receipt display-1 text-muted mb-3"></i>
-                        <h4 class="text-muted">No transactions found</h4>
-                        <p class="text-muted">
-                            {% if request.GET.type or request.GET.date_from or request.GET.date_to %}
-                                Try adjusting your filter criteria or 
-                                <a href="{% url 'inventory:transaction_list' %}" class="text-primary">clear filters</a>
-                            {% else %}
-                                {% if user|get_user_role == 'admin' or user|get_user_role == 'manager' %}
-                                    <a href="{% url 'inventory:transaction_create' %}" class="btn btn-primary mt-2">
-                                        <i class="bi bi-plus-circle me-1"></i>Create Your First Transaction
-                                    </a>
-                                {% else %}
-                                    Contact a manager to create transactions.
-                                {% endif %}
-                            {% endif %}
-                        </p>
-                    </div>
-                {% endif %}
-            </div>
-        </div>
+      </div>
     </div>
+    <div class="col-lg-6 mb-4">
+      <div class="card h-100">
+        <div class="card-header bg-light">
+          <h5 class="card-title mb-0"><i class="bi bi-arrow-down-circle me-2 text-info"></i>Recent Purchases</h5>
+        </div>
+        <div class="card-body p-0">
+          {% if recent_purchases %}
+          <div class="list-group list-group-flush">
+            {% for t in recent_purchases %}
+            <div class="list-group-item">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <h6 class="mb-1 fw-bold"><i class="bi bi-box me-2 text-primary"></i>{{ t.item.name }}</h6>
+                  <small class="text-muted"><i class="bi bi-calendar3 me-1"></i>{{ t.timestamp|date:"M d, Y" }} &bull; {{ t.quantity }} units</small>
+                </div>
+                <div class="text-end">
+                  <div class="fw-bold text-info mb-1">{{ t.total_amount|rupees }}</div>
+                  <span class="badge bg-{% if t.payment_status == 'PAID' %}success{% elif t.payment_status == 'PENDING' %}warning{% else %}danger{% endif %}">{{ t.payment_status|title }}</span>
+                </div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          <div class="card-footer bg-light text-center">
+            <a href="{% url 'inventory:transaction_list' %}?type=PURCHASE" class="text-primary text-decoration-none">View All Purchases <i class="bi bi-arrow-right ms-1"></i></a>
+          </div>
+          {% else %}
+          <div class="text-center py-5"><i class="bi bi-arrow-down-circle display-4 text-muted mb-3"></i><p class="text-muted mb-0">No purchases recorded yet</p></div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
 
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
+  <div class="card">
+    <div class="card-header bg-light">
+      <h5 class="card-title mb-0">
+        <i class="bi bi-list-ul me-2 text-primary"></i>All Transactions
+        {% if filters.type or filters.payment_status or filters.date_from or filters.date_to %}
+          <span class="badge bg-primary ms-2">Filtered</span>
+        {% endif %}
+      </h5>
+    </div>
+    <div class="card-body p-0">
+      {% if transactions %}
+      <div class="table-responsive">
+        <table class="table table-hover mb-0" style="min-width:1100px;">
+          <thead class="table-light">
+            <tr>
+              <th>Date</th><th>Type</th><th>Item</th><th class="text-center">Qty</th>
+              <th>Unit Price</th><th>Total</th><th>Profit</th><th>Payment</th><th>By</th><th class="text-center">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for t in transactions %}
+            <tr>
+              <td><div class="fw-bold">{{ t.timestamp|date:"M d, Y" }}</div><small class="text-muted">{{ t.timestamp|time:"H:i" }}</small></td>
+              <td>
+                {% if t.transaction_type == 'SALE' %}<span class="badge bg-success"><i class="bi bi-arrow-up me-1"></i>Sale</span>
+                {% else %}<span class="badge bg-info"><i class="bi bi-arrow-down me-1"></i>Purchase</span>{% endif %}
+              </td>
+              <td><i class="bi bi-box me-2 text-primary"></i><strong>{{ t.item.name }}</strong></td>
+              <td class="text-center fw-bold">{{ t.quantity }}</td>
+              <td class="text-success fw-bold">{{ t.unit_price|rupees }}</td>
+              <td class="text-primary fw-bold">{{ t.total_amount|rupees }}</td>
+              <td>{% if t.transaction_type == 'SALE' %}<span class="text-success fw-bold">{{ t.total_profit|rupees }}</span>{% else %}<span class="text-muted">—</span>{% endif %}</td>
+              <td>
+                <span class="badge bg-{% if t.payment_status == 'PAID' %}success{% elif t.payment_status == 'PENDING' %}warning{% else %}danger{% endif %}">{{ t.payment_status|title }}</span>
+                <br><small class="text-muted">{{ t.payment_method }}</small>
+              </td>
+              <td>{{ t.performed_by.first_name|default:t.performed_by.username }}</td>
+              <td class="text-center">
+                <div class="btn-group btn-group-sm">
+                  <a href="{% url 'inventory:transaction_detail' t.id %}" class="btn btn-outline-primary" title="View"><i class="bi bi-eye"></i></a>
+                  {% if t.payment_status == 'PENDING' and user|can_edit_items %}
+                    <a href="{% url 'inventory:process_payment' t.id %}" class="btn btn-outline-success" title="Process Payment"><i class="bi bi-credit-card"></i></a>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="text-center py-5">
+        <i class="bi bi-receipt display-1 text-muted mb-3"></i>
+        <h4 class="text-muted">No transactions found</h4>
+        <p class="text-muted">
+          {% if request.GET.type or request.GET.date_from or request.GET.date_to %}
+            Try adjusting filters or <a href="{% url 'inventory:transaction_list' %}">clear them</a>
+          {% else %}
+            {% if user|get_user_role == 'admin' or user|get_user_role == 'manager' %}
+              <a href="{% url 'inventory:transaction_create' %}" class="btn btn-primary mt-2"><i class="bi bi-plus-circle me-1"></i>Create First Transaction</a>
+            {% else %}Contact a manager to create transactions.{% endif %}
+          {% endif %}
+        </p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

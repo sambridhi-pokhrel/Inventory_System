@@ -195,8 +195,8 @@ class Item(models.Model):
         """Suggest reorder quantity"""
         if self.needs_reorder:
             predicted_needed = self.get_predicted_stock_needed()
-            shortage = predicted_needed - self.quantity
-            return int(shortage * 1.2)
+            shortage = max(0, predicted_needed - self.quantity)
+            return max(1, int(shortage * 1.2))
         return 0
 
 
@@ -498,3 +498,28 @@ class Transaction(models.Model):
             'purchases_count': purchases_count,
             'total_transactions': sales_count + purchases_count
         }
+
+
+
+
+class StockAdjustment(models.Model):
+    ADJUSTMENT_TYPES = [
+        ('add',    'Add Stock'),
+        ('remove', 'Remove Stock'),
+    ]
+
+    item            = models.ForeignKey(Item, on_delete=models.CASCADE, related_name='adjustments')
+    adjustment_type = models.CharField(max_length=10, choices=ADJUSTMENT_TYPES)
+    quantity        = models.PositiveIntegerField()
+    reason          = models.CharField(max_length=200)
+    notes           = models.TextField(blank=True, null=True)
+    quantity_before = models.IntegerField()
+    quantity_after  = models.IntegerField()
+    adjusted_by     = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    adjusted_at     = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-adjusted_at"]
+
+    def __str__(self):
+        return f"{self.adjustment_type} {self.quantity} - {self.item.name}"

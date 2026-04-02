@@ -824,16 +824,21 @@ def analytics_dashboard(request):
         .annotate(total=Sum('total_amount'))
         .order_by('month')
     )
-    # Build unified month list
-    all_months_set = set(r['month'].strftime('%b %Y') for r in monthly_revenue)
-    all_months_set.update(r['month'].strftime('%b %Y') for r in monthly_purchases)
-    all_months = sorted(all_months_set, key=lambda m: datetime.strptime(m, '%b %Y'))
+    from dateutil.relativedelta import relativedelta
+    compare_labels = []
+    compare_sales = []
+    compare_purchases = []
     
-    rev_map = {r['month'].strftime('%b %Y'): float(r['revenue']) for r in monthly_revenue}
-    pur_map = {r['month'].strftime('%b %Y'): float(r['total']) for r in monthly_purchases}
-    compare_labels = all_months
-    compare_sales = [rev_map.get(m, 0) for m in all_months]
-    compare_purchases = [pur_map.get(m, 0) for m in all_months]
+    for i in range(5, -1, -1):
+        target = today.replace(day=1) - relativedelta(months=i)
+        compare_labels.append(target.strftime('%b %Y'))
+        
+        rev_map = {r['month'].strftime('%b %Y'): float(r['revenue']) for r in monthly_revenue}
+        pur_map = {r['month'].strftime('%b %Y'): float(r['total']) for r in monthly_purchases}
+        
+        for label in compare_labels:
+            compare_sales.append(rev_map.get(label, 0))
+            compare_purchases.append(pur_map.get(label, 0))
 
     # --- Summary stats ---
     total_sales_amount = Transaction.objects.filter(
@@ -1465,3 +1470,202 @@ def chatbot_api(request):
     from .chatbot import get_chatbot_response
     response = get_chatbot_response(message)
     return JsonResponse(response)
+# ==================== SUPPLIER VIEWS ====================
+
+@manager_or_admin_required
+def supplier_list(request):
+    """List all suppliers"""
+    suppliers = Supplier.objects.all()
+    search = request.GET.get('search', '')
+    if search:
+        suppliers = suppliers.filter(Q(name__icontains=search) | Q(email__icontains=search))
+    context = UserRoleManager.get_context_for_user(request.user)
+    context.update({'suppliers': suppliers, 'search_query': search})
+    return render(request, 'inventory/supplier_list.html', context)
+
+
+@manager_or_admin_required
+def supplier_add(request):
+    """Add a new supplier"""
+    if request.method == 'POST':
+        name    = request.POST.get('name', '').strip()
+        email   = request.POST.get('email', '').strip()
+        phone   = request.POST.get('phone', '').strip()
+        address = request.POST.get('address', '').strip()
+        if not name:
+            messages.error(request, 'Supplier name is required.')
+            return render(request, 'inventory/supplier_form.html', UserRoleManager.get_context_for_user(request.user))
+        Supplier.objects.create(
+            name=name, email=email or None, phone=phone or None,
+            address=address or None, created_by=request.user
+        )
+        messages.success(request, f"Supplier '{name}' added successfully.")
+        return redirect('inventory:supplier_list')
+    context = UserRoleManager.get_context_for_user(request.user)
+    return render(request, 'inventory/supplier_form.html', context)
+
+
+@manager_or_admin_required
+def supplier_edit(request, supplier_id):
+    """Edit a supplier"""
+    supplier = get_object_or_404(Supplier, id=supplier_id)
+    if request.method == 'POST':
+        supplier.name    = request.POST.get('name', '').strip()
+        supplier.email   = request.POST.get('email', '').strip() or None
+        supplier.phone   = request.POST.get('phone', '').strip() or None
+        supplier.address = request.POST.get('address', '').strip() or None
+        if not supplier.name:
+            messages.error(request, 'Supplier name is required.')
+            context = UserRoleManager.get_context_for_user(request.user)
+            context['supplier'] = supplier
+            return render(request, 'inventory/supplier_form.html', context)
+        supplier.save()
+        messages.success(request, f"Supplier '{supplier.name}' updated successfully.")
+        return redirect('inventory:supplier_list')
+    context = UserRoleManager.get_context_for_user(request.user)
+    context['supplier'] = supplier
+    return render(request, 'inventory/supplier_form.html', context)
+
+
+@admin_required
+def supplier_delete(request, supplier_id):
+    """Delete (soft) a supplier"""
+    supplier = get_object_or_404(Supplier, id=supplier_id)
+    if request.method == 'POST':
+        name = supplier.name
+        supplier.delete()
+        messages.success(request, f"Supplier '{name}' deleted.")
+    return redirect('inventory:supplier_list')
+
+
+# ==================== CUSTOMER VIEWS ====================
+
+@manager_or_admin_required
+def customer_list(request):
+    """List all customers"""
+    customers = Customer.objects.all()
+    search = request.GET.get('search', '')
+    if search:
+        customers = customers.filter(Q(name__icontains=search) | Q(email__icontains=search))
+    context = UserRoleManager.get_context_for_user(request.user)
+    context.update({'customers': customers, 'search_query': search})
+    return render(request, 'inventory/customer_list.html', context)
+
+
+@manager_or_admin_required
+def customer_add(request):
+    """Add a new customer"""
+    if request.method == 'POST':
+        name    = request.POST.get('name', '').strip()
+        email   = request.POST.get('email', '').strip()
+        phone   = request.POST.get('phone', '').strip()
+        address = request.POST.get('address', '').strip()
+        if not name:
+            messages.error(request, 'Customer name is required.')
+            return render(request, 'inventory/customer_form.html', UserRoleManager.get_context_for_user(request.user))
+        Customer.objects.create(
+            name=name, email=email or None, phone=phone or None,
+            address=address or None, created_by=request.user
+        )
+        messages.success(request, f"Customer '{name}' added successfully.")
+        return redirect('inventory:customer_list')
+    context = UserRoleManager.get_context_for_user(request.user)
+    return render(request, 'inventory/customer_form.html', context)
+
+
+@manager_or_admin_required
+def customer_edit(request, customer_id):
+    """Edit a customer"""
+    customer = get_object_or_404(Customer, id=customer_id)
+    if request.method == 'POST':
+        customer.name    = request.POST.get('name', '').strip()
+        customer.email   = request.POST.get('email', '').strip() or None
+        customer.phone   = request.POST.get('phone', '').strip() or None
+        customer.address = request.POST.get('address', '').strip() or None
+        if not customer.name:
+            messages.error(request, 'Customer name is required.')
+            context = UserRoleManager.get_context_for_user(request.user)
+            context['customer'] = customer
+            return render(request, 'inventory/customer_form.html', context)
+        customer.save()
+        messages.success(request, f"Customer '{customer.name}' updated successfully.")
+        return redirect('inventory:customer_list')
+    context = UserRoleManager.get_context_for_user(request.user)
+    context['customer'] = customer
+    return render(request, 'inventory/customer_form.html', context)
+
+
+@admin_required
+def customer_delete(request, customer_id):
+    """Delete (soft) a customer"""
+    customer = get_object_or_404(Customer, id=customer_id)
+    if request.method == 'POST':
+        name = customer.name
+        customer.delete()
+        messages.success(request, f"Customer '{name}' deleted.")
+    return redirect('inventory:customer_list')
+@manager_or_admin_required
+def stock_adjustment(request, item_id):
+    from .models import StockAdjustment
+    item = get_object_or_404(Item, id=item_id)
+    adjustments = StockAdjustment.objects.filter(item=item)[:10]
+
+    if request.method == 'POST':
+        adjustment_type = request.POST.get('adjustment_type')
+        quantity        = request.POST.get('quantity')
+        reason          = request.POST.get('reason', '').strip()
+        notes           = request.POST.get('notes', '').strip()
+
+        if not all([adjustment_type, quantity, reason]):
+            messages.error(request, 'Please fill in all required fields.')
+            context = UserRoleManager.get_context_for_user(request.user)
+            context.update({'item': item, 'adjustments': adjustments})
+            return render(request, 'inventory/stock_adjustment.html', context)
+
+        try:
+            qty = int(quantity)
+            if qty <= 0:
+                raise ValueError
+
+            qty_before = item.quantity
+
+            if adjustment_type == 'add':
+                item.quantity += qty
+            elif adjustment_type == 'remove':
+                if item.quantity - qty < 0:
+                    messages.error(request, f'Cannot remove {qty} units — only {item.quantity} in stock.')
+                    context = UserRoleManager.get_context_for_user(request.user)
+                    context.update({'item': item, 'adjustments': adjustments})
+                    return render(request, 'inventory/stock_adjustment.html', context)
+                item.quantity -= qty
+            else:
+                messages.error(request, 'Invalid adjustment type.')
+                return redirect('inventory:stock_adjustment', item_id=item_id)
+
+            item.save()
+
+            StockAdjustment.objects.create(
+                item=item,
+                adjustment_type=adjustment_type,
+                quantity=qty,
+                reason=reason,
+                notes=notes or None,
+                quantity_before=qty_before,
+                quantity_after=item.quantity,
+                adjusted_by=request.user,
+            )
+
+            action = 'added to' if adjustment_type == 'add' else 'removed from'
+            messages.success(
+                request,
+                f'✅ {qty} units {action} {item.name}. '
+                f'Stock: {qty_before} → {item.quantity} units. Reason: {reason}'
+            )
+            return redirect('inventory:item_list')
+
+        except (ValueError, TypeError):
+            messages.error(request, 'Please enter a valid quantity.')
+
+    context = UserRoleManager.get_context_for_user(request.user)
+    context.update({'item': item, 'adjustments': adjustments})
+    return render(request, 'inventory/stock_adjustment.html', context)

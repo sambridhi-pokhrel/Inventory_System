@@ -1,331 +1,231 @@
+{% extends 'base.html' %}
 {% load inventory_extras %}
-<!doctype html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <title>Inventory List | Inventory Management System</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link href="/static/css/emerald-theme.css?v=2" rel="stylesheet">
-</head>
-<body class="fade-in">
-    {% include 'partials/_navbar.html' with active='inventory' %}
 
-    <!-- Header Section -->
-    <div class="dashboard-header">
-        <div class="container">
-            <div class="row align-items-center">
-                <div class="col-md-8">
-                    <h1 class="display-5 fw-bold mb-2">
-                        <i class="bi bi-box me-3"></i>
-                        Inventory Management
-                    </h1>
-                    <p class="lead mb-0">Manage your inventory items and stock levels</p>
-                </div>
-                <div class="col-md-4 text-md-end">
-                    <div class="role-badge slide-up">
-                        <i class="bi bi-shield-check"></i>
-                        {{ user|get_user_role|title }} Access
-                    </div>
-                </div>
-            </div>
-        </div>
+{% block title %}Inventory List | Inventory System{% endblock %}
+
+{% block header %}
+<div class="dashboard-header">
+  <div class="container">
+    <div class="row align-items-center">
+      <div class="col-md-8">
+        <h1 class="display-5 fw-bold mb-2"><i class="bi bi-box me-3"></i>Inventory Management</h1>
+        <p class="lead mb-0">Manage your inventory items and stock levels</p>
+      </div>
+      <div class="col-md-4 text-md-end">
+        <a href="{% url 'users:dashboard' %}" class="btn btn-outline-light">
+          <i class="bi bi-arrow-left me-1"></i>Back to Dashboard
+        </a>
+      </div>
     </div>
+  </div>
+</div>
+{% endblock %}
 
-    <!-- Messages -->
-    {% if messages %}
-        <div class="container mb-4">
-            {% for message in messages %}
-                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-                    {% if message.tags == 'error' %}
-                        <i class="bi bi-exclamation-triangle me-2"></i>
-                    {% elif message.tags == 'success' %}
-                        <i class="bi bi-check-circle me-2"></i>
-                    {% else %}
-                        <i class="bi bi-info-circle me-2"></i>
-                    {% endif %}
-                    {{ message }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
-            {% endfor %}
-        </div>
-    {% endif %}
-
-    <!-- Main Content -->
-    <div class="container">
-        <!-- Action Bar -->
-        <div class="row mb-4">
-            <div class="col-md-6">
-                {% if user|can_add_items %}
-                    <a href="{% url 'inventory:item_add' %}" class="btn btn-primary me-2">
-                        <i class="bi bi-plus-circle me-1"></i>Add New Item
-                    </a>
-                {% endif %}
-                <a href="{% url 'inventory:export_csv' %}" class="btn btn-outline-primary me-2">
-                    <i class="bi bi-download me-1"></i>Export CSV
-                </a>
-                <a href="{% url 'inventory:reorder_suggestions' %}" class="btn btn-outline-warning">
-                    <i class="bi bi-arrow-repeat me-1"></i>Reorder Suggestions
-                    {% if reorder_count > 0 %}
-                        <span class="badge bg-warning text-dark ms-1">{{ reorder_count }}</span>
-                    {% endif %}
-                </a>
-            </div>
-            <div class="col-md-6">
-                <!-- Search and Filter Form -->
-                <form method="get" class="d-flex gap-2">
-                    <input type="text" name="search" class="form-control" placeholder="Search items..." 
-                           value="{{ request.GET.search }}">
-                    <select name="status" class="form-select" style="max-width: 180px;">
-                        <option value="">All Items</option>
-                        <option value="in-stock" {% if request.GET.status == 'in-stock' %}selected{% endif %}>In Stock</option>
-                        <option value="low-stock" {% if request.GET.status == 'low-stock' %}selected{% endif %}>Low Stock</option>
-                        <option value="out-of-stock" {% if request.GET.status == 'out-of-stock' %}selected{% endif %}>Out of Stock</option>
-                        <option value="reorder-suggested" {% if request.GET.status == 'reorder-suggested' %}selected{% endif %}>Reorder Suggested</option>
-                        <option value="ai-critical" {% if request.GET.status == 'ai-critical' %}selected{% endif %}>🤖 AI Critical</option>
-                    </select>
-                    <button type="submit" class="btn btn-outline-primary">
-                        <i class="bi bi-search"></i>
-                    </button>
-                </form>
-            </div>
-        </div>
-
-        <!-- AI Notification Summary -->
-        {% if notification_summary and notification_summary.total_alerts > 0 %}
-        <div class="row mb-4">
-            <div class="col-12">
-                <div class="alert alert-info border-0 shadow-sm">
-                    <div class="d-flex align-items-center">
-                        <div class="flex-shrink-0">
-                            <i class="bi bi-robot fs-4 text-primary"></i>
-                        </div>
-                        <div class="flex-grow-1 ms-3">
-                            <h6 class="alert-heading mb-1">
-                                <strong>AI Inventory Analysis</strong>
-                            </h6>
-                            <p class="mb-2">
-                                {% if notification_summary.critical_count > 0 %}
-                                    <span class="badge bg-danger me-2">{{ notification_summary.critical_count }} Critical</span>
-                                {% endif %}
-                                {% if notification_summary.high_count > 0 %}
-                                    <span class="badge bg-warning text-dark me-2">{{ notification_summary.high_count }} High Priority</span>
-                                {% endif %}
-                                <span class="badge bg-primary me-2">{{ notification_summary.ai_powered_count }} AI Monitored</span>
-                                <span class="badge bg-secondary">{{ notification_summary.ai_coverage|floatformat:0 }}% Coverage</span>
-                            </p>
-                            <div class="d-flex gap-2 flex-wrap">
-                                {% if notification_summary.critical_count > 0 %}
-                                    <a href="?status=ai-critical" class="btn btn-danger btn-sm">
-                                        <i class="bi bi-exclamation-triangle me-1"></i>View Critical Items
-                                    </a>
-                                {% endif %}
-                                <a href="{% url 'inventory:reorder_suggestions' %}" class="btn btn-primary btn-sm">
-                                    <i class="bi bi-robot me-1"></i>Full AI Analysis
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+{% block content %}
+<div class="container">
+  <div class="row mb-4">
+    <div class="col-md-6">
+      {% if user|can_add_items %}
+        <a href="{% url 'inventory:item_add' %}" class="btn btn-primary me-2">
+          <i class="bi bi-plus-circle me-1"></i>Add New Item
+        </a>
+      {% endif %}
+      <a href="{% url 'inventory:export_csv' %}" class="btn btn-outline-primary me-2">
+        <i class="bi bi-download me-1"></i>Export CSV
+      </a>
+      <a href="{% url 'inventory:reorder_suggestions' %}" class="btn btn-outline-warning">
+        <i class="bi bi-arrow-repeat me-1"></i>Reorder Suggestions
+        {% if reorder_count > 0 %}
+          <span class="badge bg-warning text-dark ms-1">{{ reorder_count }}</span>
         {% endif %}
-
-        <!-- Inventory Statistics -->
-        <div class="row mb-4">
-            <div class="col-lg-3 col-md-6 mb-3">
-                <div class="stat-card success">
-                    <div class="card-body text-center">
-                        <i class="bi bi-box-seam display-6 text-success mb-2"></i>
-                        <h4 class="fw-bold text-success">{{ total_items }}</h4>
-                        <p class="text-muted mb-0">Total Items</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-lg-3 col-md-6 mb-3">
-                <div class="stat-card warning">
-                    <div class="card-body text-center">
-                        <i class="bi bi-exclamation-triangle display-6 text-warning mb-2"></i>
-                        <h4 class="fw-bold text-warning">{{ low_stock_count }}</h4>
-                        <p class="text-muted mb-0">Low Stock</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-lg-3 col-md-6 mb-3">
-                <div class="stat-card danger">
-                    <div class="card-body text-center">
-                        <i class="bi bi-x-circle display-6 text-danger mb-2"></i>
-                        <h4 class="fw-bold text-danger">{{ out_of_stock_count }}</h4>
-                        <p class="text-muted mb-0">Out of Stock</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-lg-3 col-md-6 mb-3">
-                <div class="stat-card info">
-                    <div class="card-body text-center">
-                        <i class="bi bi-arrow-repeat display-6 text-info mb-2"></i>
-                        <h4 class="fw-bold text-info">{{ reorder_count }}</h4>
-                        <p class="text-muted mb-0">Reorder Suggested</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Inventory Table -->
-        <div class="card">
-            <div class="card-header bg-light">
-                <h5 class="card-title mb-0">
-                    <i class="bi bi-list-ul me-2 text-primary"></i>
-                    Inventory Items
-                    {% if request.GET.search or request.GET.status %}
-                        <small class="text-muted">
-                            (Filtered{% if request.GET.search %} by "{{ request.GET.search }}"{% endif %}{% if request.GET.status %} - {{ request.GET.status|title }}{% endif %})
-                        </small>
-                    {% endif %}
-                </h5>
-            </div>
-            <div class="card-body p-0">
-                {% if items %}
-                    <div class="table-responsive">
-                        <table class="table table-hover mb-0 inventory-table">
-                            <thead>
-                                <tr>
-                                    <th style="width: 100px;">Product</th>
-                                    <th>Item Details</th>
-                                    <th>Stock</th>
-                                    <th>Price</th>
-                                    <th>Profit/Unit</th>
-                                    <th>Status</th>
-                                    <th>Reorder Info</th>
-                                    <th style="width: 120px;">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for item in items %}
-                                    <tr>
-                                        <td class="align-middle">
-                                            <img src="{% if item.image %}{{ item.image.url }}{% else %}/static/images/no-image-placeholder.svg{% endif %}" 
-                                                 alt="{{ item.name }}" 
-                                                 class="product-thumbnail">
-                                        </td>
-                                        <td class="align-middle">
-                                            <div class="fw-bold text-dark mb-1">{{ item.name }}</div>
-                                            <small class="text-muted">
-                                                <i class="bi bi-box-seam me-1"></i>
-                                                Total Value: {{ item.quantity|mul:item.price|rupees }}
-                                            </small>
-                                        </td>
-                                        <td class="align-middle">
-                                            <div class="fw-bold text-dark">{{ item.quantity }}</div>
-                                            <small class="text-muted">Reorder: {{ item.reorder_level }}</small>
-                                        </td>
-                                        <td class="align-middle">
-                                            <div class="fw-bold text-success">{{ item.price|rupees }}</div>
-                                            <small class="text-muted">Selling price</small>
-                                        </td>
-                                        <td class="align-middle">
-                                            {% if item.profit_per_unit > 0 %}
-                                                <div class="fw-bold text-success">
-                                                    <i class="bi bi-arrow-up me-1"></i>
-                                                    {{ item.profit_per_unit|rupees }}
-                                                </div>
-                                            {% elif item.profit_per_unit < 0 %}
-                                                <div class="fw-bold text-danger">
-                                                    <i class="bi bi-arrow-down me-1"></i>
-                                                    {{ item.profit_per_unit|rupees }}
-                                                </div>
-                                            {% else %}
-                                                <div class="fw-bold text-muted">Rs. 0.00</div>
-                                            {% endif %}
-                                            <small class="text-muted">Cost: {{ item.cost_price|rupees }}</small>
-                                        </td>
-                                        <td class="align-middle">
-                                            <span class="stock-status {{ item.stock_status }}">
-                                                {% if item.stock_status == 'in-stock' %}
-                                                    <i class="bi bi-check-circle"></i>
-                                                    In Stock
-                                                {% elif item.stock_status == 'low-stock' %}
-                                                    <i class="bi bi-exclamation-triangle"></i>
-                                                    Low Stock
-                                                {% else %}
-                                                    <i class="bi bi-x-circle"></i>
-                                                    Out of Stock
-                                                {% endif %}
-                                            </span>
-                                        </td>
-                                        <td class="align-middle">
-                                            {% if item.needs_reorder %}
-                                                <span class="badge bg-warning text-dark mb-1">
-                                                    <i class="bi bi-arrow-repeat me-1"></i>
-                                                    Order {{ item.suggested_reorder_quantity }}
-                                                </span>
-                                                <div>
-                                                    <small class="text-muted">{{ item.get_average_daily_usage|floatformat:1 }}/day</small>
-                                                </div>
-                                            {% else %}
-                                                <span class="badge bg-success mb-1">
-                                                    <i class="bi bi-check-circle me-1"></i>
-                                                    Well Stocked
-                                                </span>
-                                                <div>
-                                                    <small class="text-muted">{{ item.lead_time_days }}d lead</small>
-                                                </div>
-                                            {% endif %}
-                                        </td>
-                                        <td class="align-middle">
-                                            <div class="btn-group btn-group-sm" role="group">
-                                                {% if user|can_edit_items %}
-                                                    <a href="{% url 'inventory:item_edit' item.id %}" 
-                                                       class="btn btn-outline-primary" title="Edit">
-                                                        <i class="bi bi-pencil"></i>
-                                                    </a>
-                                                {% endif %}
-                                                {% if user|can_delete_items %}
-                                                    <form method="post" action="{% url 'inventory:item_delete' item.id %}" 
-                                                          style="display: inline;"
-                                                          onsubmit="return confirm('Are you sure you want to delete {{ item.name }}?')">
-                                                        {% csrf_token %}
-                                                        <button type="submit" class="btn btn-outline-danger btn-sm" title="Delete">
-                                                            <i class="bi bi-trash"></i>
-                                                        </button>
-                                                    </form>
-                                                {% endif %}
-                                                {% if not user|can_edit_items and not user|can_delete_items %}
-                                                    <span class="badge bg-secondary">View Only</span>
-                                                {% endif %}
-                                            </div>
-                                        </td>
-                                    </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                {% else %}
-                    <div class="text-center py-5">
-                        <i class="bi bi-inbox display-1 text-muted mb-3"></i>
-                        <h4 class="text-muted">No items found</h4>
-                        <p class="text-muted">
-                            {% if request.GET.search or request.GET.status %}
-                                Try adjusting your search criteria or 
-                                <a href="{% url 'inventory:item_list' %}" class="text-primary">clear filters</a>
-                            {% else %}
-                                {% if user|can_add_items %}
-                                    <a href="{% url 'inventory:item_add' %}" class="btn btn-primary mt-2">
-                                        <i class="bi bi-plus-circle me-1"></i>Add Your First Item
-                                    </a>
-                                {% else %}
-                                    Contact a manager to add inventory items.
-                                {% endif %}
-                            {% endif %}
-                        </p>
-                    </div>
-                {% endif %}
-            </div>
-        </div>
+      </a>
     </div>
+    <div class="col-md-6">
+      <form method="get" class="d-flex gap-2">
+        <input type="text" name="search" class="form-control" placeholder="Search items..."
+               value="{{ request.GET.search }}">
+        <select name="status" class="form-select" style="max-width:180px;">
+          <option value="">All Items</option>
+          <option value="in-stock" {% if request.GET.status == 'in-stock' %}selected{% endif %}>In Stock</option>
+          <option value="low-stock" {% if request.GET.status == 'low-stock' %}selected{% endif %}>Low Stock</option>
+          <option value="out-of-stock" {% if request.GET.status == 'out-of-stock' %}selected{% endif %}>Out of Stock</option>
+          <option value="reorder-suggested" {% if request.GET.status == 'reorder-suggested' %}selected{% endif %}>Reorder Suggested</option>
+          <option value="ai-critical" {% if request.GET.status == 'ai-critical' %}selected{% endif %}>AI Critical</option>
+        </select>
+        <button type="submit" class="btn btn-outline-primary"><i class="bi bi-search"></i></button>
+      </form>
+    </div>
+  </div>
 
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
+  {% if notification_summary and notification_summary.total_alerts > 0 %}
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="alert alert-info border-0 shadow-sm">
+        <div class="d-flex align-items-center">
+          <i class="bi bi-robot fs-4 text-primary me-3"></i>
+          <div>
+            <h6 class="alert-heading mb-1"><strong>AI Inventory Analysis</strong></h6>
+            <p class="mb-2">
+              {% if notification_summary.critical_count > 0 %}
+                <span class="badge bg-danger me-2">{{ notification_summary.critical_count }} Critical</span>
+              {% endif %}
+              {% if notification_summary.high_count > 0 %}
+                <span class="badge bg-warning text-dark me-2">{{ notification_summary.high_count }} High Priority</span>
+              {% endif %}
+              <span class="badge bg-primary me-2">{{ notification_summary.ai_powered_count }} AI Monitored</span>
+              <span class="badge bg-secondary">{{ notification_summary.ai_coverage|floatformat:0 }}% Coverage</span>
+            </p>
+            <div class="d-flex gap-2 flex-wrap">
+              {% if notification_summary.critical_count > 0 %}
+                <a href="?status=ai-critical" class="btn btn-danger btn-sm">
+                  <i class="bi bi-exclamation-triangle me-1"></i>View Critical Items
+                </a>
+              {% endif %}
+              <a href="{% url 'inventory:reorder_suggestions' %}" class="btn btn-primary btn-sm">
+                <i class="bi bi-robot me-1"></i>Full AI Analysis
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="row mb-4">
+    <div class="col-lg-3 col-md-6 mb-3">
+      <div class="stat-card success"><div class="card-body text-center">
+        <i class="bi bi-box-seam display-6 text-success mb-2"></i>
+        <h4 class="fw-bold text-success">{{ total_items }}</h4>
+        <p class="text-muted mb-0">Total Items</p>
+      </div></div>
+    </div>
+    <div class="col-lg-3 col-md-6 mb-3">
+      <div class="stat-card warning"><div class="card-body text-center">
+        <i class="bi bi-exclamation-triangle display-6 text-warning mb-2"></i>
+        <h4 class="fw-bold text-warning">{{ low_stock_count }}</h4>
+        <p class="text-muted mb-0">Low Stock</p>
+      </div></div>
+    </div>
+    <div class="col-lg-3 col-md-6 mb-3">
+      <div class="stat-card danger"><div class="card-body text-center">
+        <i class="bi bi-x-circle display-6 text-danger mb-2"></i>
+        <h4 class="fw-bold text-danger">{{ out_of_stock_count }}</h4>
+        <p class="text-muted mb-0">Out of Stock</p>
+      </div></div>
+    </div>
+    <div class="col-lg-3 col-md-6 mb-3">
+      <div class="stat-card info"><div class="card-body text-center">
+        <i class="bi bi-arrow-repeat display-6 text-info mb-2"></i>
+        <h4 class="fw-bold text-info">{{ reorder_count }}</h4>
+        <p class="text-muted mb-0">Reorder Suggested</p>
+      </div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header bg-light">
+      <h5 class="card-title mb-0">
+        <i class="bi bi-list-ul me-2 text-primary"></i>Inventory Items
+        {% if request.GET.search or request.GET.status %}
+          <small class="text-muted">(Filtered{% if request.GET.search %} by "{{ request.GET.search }}"{% endif %}{% if request.GET.status %} — {{ request.GET.status|title }}{% endif %})</small>
+        {% endif %}
+      </h5>
+    </div>
+    <div class="card-body p-0">
+      {% if items %}
+      <div class="table-responsive">
+        <table class="table table-hover mb-0 inventory-table">
+          <thead>
+            <tr>
+              <th style="width:100px;">Product</th>
+              <th>Item Details</th>
+              <th>Stock</th>
+              <th>Price</th>
+              <th>Profit/Unit</th>
+              <th>Status</th>
+              <th>Reorder Info</th>
+              <th style="width:120px;">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in items %}
+            <tr>
+              <td class="align-middle">
+                <img src="{% if item.image %}{{ item.image.url }}{% else %}/static/images/no-image-placeholder.svg{% endif %}"
+                     alt="{{ item.name }}" class="product-thumbnail">
+              </td>
+              <td class="align-middle">
+                <div class="fw-bold text-dark mb-1">{{ item.name }}</div>
+                <small class="text-muted"><i class="bi bi-box-seam me-1"></i>Total Value: {{ item.quantity|mul:item.price|rupees }}</small>
+              </td>
+              <td class="align-middle">
+                <div class="fw-bold text-dark">{{ item.quantity }}</div>
+                <small class="text-muted">Reorder: {{ item.reorder_level }}</small>
+              </td>
+              <td class="align-middle">
+                <div class="fw-bold text-success">{{ item.price|rupees }}</div>
+                <small class="text-muted">Selling price</small>
+              </td>
+              <td class="align-middle">
+                {% if item.profit_per_unit > 0 %}
+                  <div class="fw-bold text-success"><i class="bi bi-arrow-up me-1"></i>{{ item.profit_per_unit|rupees }}</div>
+                {% elif item.profit_per_unit < 0 %}
+                  <div class="fw-bold text-danger"><i class="bi bi-arrow-down me-1"></i>{{ item.profit_per_unit|rupees }}</div>
+                {% else %}
+                  <div class="fw-bold text-muted">Rs. 0.00</div>
+                {% endif %}
+                <small class="text-muted">Cost: {{ item.cost_price|rupees }}</small>
+              </td>
+              <td class="align-middle">
+                <span class="stock-status {{ item.stock_status }}">
+                  {% if item.stock_status == 'in-stock' %}<i class="bi bi-check-circle"></i> In Stock
+                  {% elif item.stock_status == 'low-stock' %}<i class="bi bi-exclamation-triangle"></i> Low Stock
+                  {% else %}<i class="bi bi-x-circle"></i> Out of Stock{% endif %}
+                </span>
+              </td>
+              <td class="align-middle">
+                <span class="badge bg-success mb-1"><i class="bi bi-check-circle me-1"></i>Well Stocked</span>
+                <div><small class="text-muted">{{ item.lead_time_days }}d lead</small></div>
+              </td>
+              <td class="align-middle">
+                <div class="btn-group btn-group-sm">
+                  {% if user|can_edit_items %}
+                    <a href="{% url 'inventory:item_edit' item.id %}" class="btn btn-outline-primary" title="Edit"><i class="bi bi-pencil"></i></a>
+                  {% endif %}
+                  {% if user|can_delete_items %}
+                    <form method="post" action="{% url 'inventory:item_delete' item.id %}" style="display:inline;"
+                          onsubmit="return confirm('Delete {{ item.name }}?')">
+                      {% csrf_token %}
+                      <button type="submit" class="btn btn-outline-danger btn-sm" title="Delete"><i class="bi bi-trash"></i></button>
+                    </form>
+                  {% endif %}
+                  {% if not user|can_edit_items and not user|can_delete_items %}
+                    <span class="badge bg-secondary">View Only</span>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="text-center py-5">
+        <i class="bi bi-inbox display-1 text-muted mb-3"></i>
+        <h4 class="text-muted">No items found</h4>
+        <p class="text-muted">
+          {% if request.GET.search or request.GET.status %}
+            Try adjusting your search or <a href="{% url 'inventory:item_list' %}">clear filters</a>
+          {% else %}
+            {% if user|can_add_items %}
+              <a href="{% url 'inventory:item_add' %}" class="btn btn-primary mt-2"><i class="bi bi-plus-circle me-1"></i>Add Your First Item</a>
+            {% else %}Contact a manager to add inventory items.{% endif %}
+          {% endif %}
+        </p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

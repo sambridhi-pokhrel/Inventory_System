@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+{% load inventory_extras %}
+
+{% block title %}Suppliers | Inventory System{% endblock %}
+
+{% block header %}
+<div class="dashboard-header">
+  <div class="container">
+    <div class="row align-items-center">
+      <div class="col-md-8">
+        <h1><i class="bi bi-truck me-2"></i>Suppliers</h1>
+        <p class="lead mb-0">Manage your product suppliers</p>
+      </div>
+      <div class="col-md-4 text-md-end">
+        <a href="{% url 'inventory:supplier_add' %}" class="btn btn-primary">
+          <i class="bi bi-plus-circle me-1"></i>Add Supplier
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+  {% if messages %}
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
+      {{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+  {% endif %}
+
+  <!-- Search -->
+  <div class="card mb-4">
+    <div class="card-body py-3">
+      <form method="get" class="d-flex gap-2">
+        <input type="text" name="search" class="form-control" placeholder="Search suppliers..." value="{{ search_query }}">
+        <button type="submit" class="btn btn-primary px-4"><i class="bi bi-search"></i></button>
+        {% if search_query %}<a href="{% url 'inventory:supplier_list' %}" class="btn btn-outline-secondary">Clear</a>{% endif %}
+      </form>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="card">
+    <div class="card-header">
+      <h6 class="mb-0"><i class="bi bi-truck me-2 text-primary"></i>All Suppliers <span class="badge bg-primary ms-2">{{ suppliers.count }}</span></h6>
+    </div>
+    <div class="table-responsive">
+      <table class="table inventory-table mb-0">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Phone</th>
+            <th>Address</th>
+            <th>Added</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for supplier in suppliers %}
+          <tr>
+            <td class="text-muted">{{ forloop.counter }}</td>
+            <td><strong>{{ supplier.name }}</strong></td>
+            <td>{% if supplier.email %}<a href="mailto:{{ supplier.email }}" class="text-primary">{{ supplier.email }}</a>{% else %}<span class="text-muted">—</span>{% endif %}</td>
+            <td>{% if supplier.phone %}{{ supplier.phone }}{% else %}<span class="text-muted">—</span>{% endif %}</td>
+            <td>{% if supplier.address %}<small class="text-muted">{{ supplier.address|truncatechars:40 }}</small>{% else %}<span class="text-muted">—</span>{% endif %}</td>
+            <td><small class="text-muted">{{ supplier.created_at|date:"M d, Y" }}</small></td>
+            <td>
+              <div class="d-flex gap-1">
+                <a href="{% url 'inventory:supplier_edit' supplier.id %}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
+                {% if user_role == "admin" %}
+                <form method="post" action="{% url 'inventory:supplier_delete' supplier.id %}" onsubmit="return confirm('Delete {{ supplier.name }}?')">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                </form>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="7" class="text-center py-5">
+              <i class="bi bi-truck display-4 text-muted d-block mb-3"></i>
+              <p class="text-muted mb-3">No suppliers found{% if search_query %} for "{{ search_query }}"{% endif %}</p>
+              <a href="{% url 'inventory:supplier_add' %}" class="btn btn-primary btn-sm"><i class="bi bi-plus-circle me-1"></i>Add First Supplier</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

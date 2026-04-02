@@ -10,11 +10,7 @@ from django.core.exceptions import PermissionDenied
 from datetime import timedelta
 from .forms import CustomUserCreationForm, CustomPasswordResetForm
 from .models import UserProfile
-from .decorators import (
-    approved_user_required, 
-    admin_required, 
-    role_required
-)
+from .decorators import approved_user_required, admin_required, role_required
 from .utils import UserRoleManager
 
 
@@ -22,73 +18,19 @@ def login_view(request):
     if request.method == 'POST':
         username = request.POST.get('username')
         password = request.POST.get('password')
-        
-        print(f"DEBUG: Login attempt - Username: {username}, Password: {'*' * len(password) if password else 'None'}")
 
         user = authenticate(request, username=username, password=password)
-        print(f"DEBUG: Authentication result: {user}")
-        
+
         if user:
-            # Check if user is approved
-            is_approved = UserRoleManager.is_approved(user)
-            print(f"DEBUG: User approval status: {is_approved}")
-            
-            if not is_approved:
+            if not UserRoleManager.is_approved(user):
                 messages.error(request, 'Your account is pending approval. Please contact an administrator.')
                 return render(request, 'users/login.html')
-            
             login(request, user)
-            print(f"DEBUG: Login successful, redirecting to dashboard")
             return redirect('users:dashboard')
         else:
-            print(f"DEBUG: Authentication failed for username: {username}")
             messages.error(request, 'Invalid username or password.')
 
     return render(request, 'users/login.html')
-
-
-def simple_login_view(request):
-    """Simple debug login view"""
-    if request.method == 'POST':
-        username = request.POST.get('username')
-        password = request.POST.get('password')
-
-        user = authenticate(request, username=username, password=password)
-        if user:
-            # Check if user is approved
-            if not UserRoleManager.is_approved(user):
-                messages.error(request, 'Your account is pending approval. Please contact an administrator.')
-                return render(request, 'users/simple_login.html')
-            
-            login(request, user)
-            messages.success(request, f'Successfully logged in as {user.username}!')
-            return redirect('users:dashboard')
-        else:
-            messages.error(request, f'Invalid credentials for username: {username}')
-
-    return render(request, 'users/simple_login.html')
-
-
-def basic_login_view(request):
-    """Basic login view with minimal styling"""
-    if request.method == 'POST':
-        username = request.POST.get('username')
-        password = request.POST.get('password')
-
-        user = authenticate(request, username=username, password=password)
-        if user:
-            # Check if user is approved
-            if not UserRoleManager.is_approved(user):
-                messages.error(request, 'Your account is pending approval. Please contact an administrator.')
-                return render(request, 'users/basic_login.html')
-            
-            login(request, user)
-            messages.success(request, f'Successfully logged in as {user.username}!')
-            return redirect('users:dashboard')
-        else:
-            messages.error(request, f'Authentication failed for username: {username}')
-
-    return render(request, 'users/basic_login.html')
 
 
 def register_view(request):
@@ -96,16 +38,25 @@ def register_view(request):
         form = CustomUserCreationForm(request.POST)
         if form.is_valid():
             user = form.save()
-            # Don't assign any groups - user needs approval
-            user.is_active = True  # Keep user active but not approved
+            user.is_active = True
             user.save()
-            
             messages.success(request, 'Registration successful! Your account is pending approval by an administrator.')
             return redirect('users:login')
     else:
         form = CustomUserCreationForm()
-    
+
     return render(request, 'users/register.html', {'form': form})
+
+
+@login_required
+def pending_approval_view(request):
+    """
+    Shown to Google-login users whose account is still pending admin approval.
+    If somehow an approved user lands here, redirect them to dashboard.
+    """
+    if UserRoleManager.is_approved(request.user):
+        return redirect('users:dashboard')
+    return render(request, 'users/pending_approval.html')
 
 
 @admin_required
@@ -113,12 +64,10 @@ def user_management(request):
     """Admin view to manage user approvals and roles"""
     pending_users = UserProfile.objects.filter(approval_status='pending')
     approved_users = UserProfile.objects.filter(approval_status='approved')
-    
-    # Calculate statistics
-    from django.contrib.auth.models import User
+
     total_users = User.objects.filter(is_active=True).count()
     admin_users = User.objects.filter(is_superuser=True)
-    
+
     context = {
         'pending_users': pending_users,
         'approved_users': approved_users,
@@ -135,41 +84,34 @@ def approve_user(request, user_id):
     if request.method == 'POST':
         try:
             user_profile = get_object_or_404(UserProfile, user_id=user_id)
-        except:
-            # If UserProfile doesn't exist, try to create it for the user
+        except Exception:
             try:
                 user = get_object_or_404(User, id=user_id)
                 user_profile, created = UserProfile.objects.get_or_create(
                     user=user,
-                    defaults={
-                        'approval_status': 'pending',
-                        'is_approved': False
-                    }
+                    defaults={'approval_status': 'pending', 'is_approved': False}
                 )
                 if created:
                     messages.info(request, f'Created profile for user {user.username}.')
-            except:
+            except Exception:
                 messages.error(request, 'User not found or profile could not be created.')
                 return redirect('users:user_management')
-        
+
         role = request.POST.get('role')
-        
+
         if role not in ['manager', 'staff']:
             messages.error(request, 'Invalid role selected.')
             return redirect('users:user_management')
-        
-        # Approve the user
+
         user_profile.is_approved = True
         user_profile.approval_status = 'approved'
         user_profile.approved_at = timezone.now()
         user_profile.approved_by = request.user
         user_profile.save()
-        
-        # Assign role using utility function
+
         UserRoleManager.assign_role(user_profile.user, role)
-        
         messages.success(request, f'User {user_profile.user.username} has been approved as {role.title()}.')
-    
+
     return redirect('users:user_management')
 
 
@@ -179,7 +121,6 @@ def reject_user(request, user_id):
     user_profile = get_object_or_404(UserProfile, user_id=user_id)
     user_profile.approval_status = 'rejected'
     user_profile.save()
-    
     messages.warning(request, f'User {user_profile.user.username} has been rejected.')
     return redirect('users:user_management')
 
@@ -187,40 +128,30 @@ def reject_user(request, user_id):
 @approved_user_required
 def dashboard(request):
     """Main dashboard view with role-based content and AI notifications"""
-    # Add AI-powered notifications to dashboard
     from inventory.notifications import notification_manager
     notification_manager.add_dashboard_notifications(request)
-    
-    # Get user role and context
+
     role = UserRoleManager.get_user_role(request.user)
     context = UserRoleManager.get_context_for_user(request.user)
-    
-    # Get inventory statistics
+
     from inventory.models import Item
     total_items = Item.objects.count()
     low_stock_items = Item.objects.filter(quantity__lte=10)
     low_stock_count = low_stock_items.count()
     out_of_stock_count = Item.objects.filter(quantity=0).count()
-    
-    # Calculate total value safely
-    total_value = 0
-    for item in Item.objects.all():
-        total_value += item.price * item.quantity
-    
-    # Get recent items (last 5 added)
+
+    total_value = sum(item.price * item.quantity for item in Item.objects.all())
     recent_items = Item.objects.order_by('-id')[:5]
-    
-    # Get AI notification summary for dashboard widgets
     notification_summary = notification_manager.get_notification_summary()
-    
-    # Mini chart data for dashboard
+
     import json
-    from datetime import timedelta
     from django.db.models import Sum
     from django.db.models.functions import TruncDate
     from inventory.models import Transaction
+
     today_date = timezone.now().date()
     seven_days_ago = today_date - timedelta(days=6)
+
     sales_by_day = (
         Transaction.objects.filter(
             transaction_type='SALE',
@@ -235,42 +166,37 @@ def dashboard(request):
     day_map = {r['day']: float(r['total']) for r in sales_by_day}
     mini_labels = [(seven_days_ago + timedelta(days=i)).strftime('%a') for i in range(7)]
     mini_data = [day_map.get(seven_days_ago + timedelta(days=i), 0) for i in range(7)]
-    
-    # Recent transactions summary
-    from inventory.models import Transaction as Txn
+
     recent_sales_total = Transaction.objects.filter(
         transaction_type='SALE', payment_status='PAID'
     ).aggregate(t=Sum('total_amount'))['t'] or 0
+
     recent_purchases_total = Transaction.objects.filter(
         transaction_type='PURCHASE', payment_status='PAID'
     ).aggregate(t=Sum('total_amount'))['t'] or 0
-    
-    # Update context with dashboard data
+
     context.update({
-        "user": request.user,
-        "total_items": total_items,
-        "low_stock_items": low_stock_count,  # This matches the template variable
-        "out_of_stock_items": out_of_stock_count,  # This matches the template variable
-        "total_value": total_value,
-        "recent_items": recent_items,
-        "low_stock_items_list": low_stock_items[:5],  # Renamed to avoid conflict
-        "notification_summary": notification_summary,  # AI notification data
-        "mini_labels": json.dumps(mini_labels),
-        "mini_data": json.dumps(mini_data),
-        "recent_sales_total": recent_sales_total,
-        "recent_purchases_total": recent_purchases_total,
+        'user': request.user,
+        'total_items': total_items,
+        'low_stock_items': low_stock_count,
+        'out_of_stock_items': out_of_stock_count,
+        'total_value': total_value,
+        'recent_items': recent_items,
+        'low_stock_items_list': low_stock_items[:5],
+        'notification_summary': notification_summary,
+        'mini_labels': json.dumps(mini_labels),
+        'mini_data': json.dumps(mini_data),
+        'recent_sales_total': recent_sales_total,
+        'recent_purchases_total': recent_purchases_total,
     })
-    
-    # Add admin-specific data
+
     if UserRoleManager.is_admin(request.user):
-        pending_users = UserProfile.objects.filter(approval_status='pending').count()
-        total_users = UserProfile.objects.filter(approval_status='approved').count()
         context.update({
-            "pending_users": pending_users,
-            "total_users": total_users,
+            'pending_users': UserProfile.objects.filter(approval_status='pending').count(),
+            'total_users': UserProfile.objects.filter(approval_status='approved').count(),
         })
 
-    return render(request, "users/dashboard.html", context)
+    return render(request, 'users/dashboard.html', context)
 
 
 def logout_view(request):
@@ -293,30 +219,26 @@ class CustomPasswordResetConfirmView(PasswordResetConfirmView):
 
 
 def landing_view(request):
-    """Modern landing page for the inventory system"""
-    # If user is already authenticated, redirect to dashboard
+    """Landing page — redirects authenticated users to dashboard"""
     if request.user.is_authenticated:
         return redirect('users:dashboard')
-    
     return render(request, 'landing.html')
 
 
 @approved_user_required
 def profile_view(request):
-    """User profile page — read-only, accessible to all roles"""
+    """User profile page — read-only, accessible to all approved roles"""
     from inventory.models import Transaction, Item
-    from django.db.models import Sum, Count
+    from django.db.models import Sum
 
     user = request.user
     role = UserRoleManager.get_user_role(user)
 
-    # Get UserProfile safely
     try:
         profile = user.userprofile
     except Exception:
         profile = None
 
-    # Activity stats
     transactions_performed = Transaction.all_objects.filter(performed_by=user).count()
     items_created = Item.all_objects.filter(created_by=user).count()
     sales_total = Transaction.all_objects.filter(

@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+{% load inventory_extras %}
+
+{% block title %}Customers | Inventory System{% endblock %}
+
+{% block header %}
+<div class="dashboard-header">
+  <div class="container">
+    <div class="row align-items-center">
+      <div class="col-md-8">
+        <h1><i class="bi bi-people me-2"></i>Customers</h1>
+        <p class="lead mb-0">Manage your customers</p>
+      </div>
+      <div class="col-md-4 text-md-end">
+        <a href="{% url 'inventory:customer_add' %}" class="btn btn-primary">
+          <i class="bi bi-plus-circle me-1"></i>Add Customer
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+  {% if messages %}
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
+      {{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+  {% endif %}
+
+  <!-- Search -->
+  <div class="card mb-4">
+    <div class="card-body py-3">
+      <form method="get" class="d-flex gap-2">
+        <input type="text" name="search" class="form-control" placeholder="Search customers..." value="{{ search_query }}">
+        <button type="submit" class="btn btn-primary px-4"><i class="bi bi-search"></i></button>
+        {% if search_query %}<a href="{% url 'inventory:customer_list' %}" class="btn btn-outline-secondary">Clear</a>{% endif %}
+      </form>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="card">
+    <div class="card-header">
+      <h6 class="mb-0"><i class="bi bi-people me-2 text-primary"></i>All Customers <span class="badge bg-primary ms-2">{{ customers.count }}</span></h6>
+    </div>
+    <div class="table-responsive">
+      <table class="table inventory-table mb-0">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Phone</th>
+            <th>Address</th>
+            <th>Added</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for customer in customers %}
+          <tr>
+            <td class="text-muted">{{ forloop.counter }}</td>
+            <td><strong>{{ customer.name }}</strong></td>
+            <td>{% if customer.email %}<a href="mailto:{{ customer.email }}" class="text-primary">{{ customer.email }}</a>{% else %}<span class="text-muted">—</span>{% endif %}</td>
+            <td>{% if customer.phone %}{{ customer.phone }}{% else %}<span class="text-muted">—</span>{% endif %}</td>
+            <td>{% if customer.address %}<small class="text-muted">{{ customer.address|truncatechars:40 }}</small>{% else %}<span class="text-muted">—</span>{% endif %}</td>
+            <td><small class="text-muted">{{ customer.created_at|date:"M d, Y" }}</small></td>
+            <td>
+              <div class="d-flex gap-1">
+                <a href="{% url 'inventory:customer_edit' customer.id %}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
+                {% if user_role == "admin" %}
+                <form method="post" action="{% url 'inventory:customer_delete' customer.id %}" onsubmit="return confirm('Delete {{ customer.name }}?')">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                </form>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="7" class="text-center py-5">
+              <i class="bi bi-people display-4 text-muted d-block mb-3"></i>
+              <p class="text-muted mb-3">No customers found{% if search_query %} for "{{ search_query }}"{% endif %}</p>
+              <a href="{% url 'inventory:customer_add' %}" class="btn btn-primary btn-sm"><i class="bi bi-plus-circle me-1"></i>Add First Customer</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

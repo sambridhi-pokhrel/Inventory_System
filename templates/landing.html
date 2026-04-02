@@ -1,502 +1,613 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Inventory Management System - Smart Inventory Control</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inventory System — AI-Powered Inventory Management</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --brand:      #6d28d9;
+      --brand-dark: #5b21b6;
+      --brand-pale: #f5f3ff;
+      --navy:       #0f172a;
+      --navy-2:     #1e293b;
+      --navy-3:     #334155;
+      --bg:         #f1f5f9;
+      --surface:    #ffffff;
+      --border:     #e2e8f0;
+      --text-1:     #0f172a;
+      --text-2:     #475569;
+      --text-3:     #94a3b8;
+      --green:      #059669;
+      --amber:      #d97706;
+      --red:        #dc2626;
+      --blue:       #2563eb;
+    }
 
-        body {
-            font-family: 'Inter', sans-serif;
-            color: #2c3e50;
-            overflow-x: hidden;
-        }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
 
-        /* Navigation */
-        .navbar {
-            background: #ffffff;
-            padding: 1.5rem 0;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.04);
-        }
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+      background: var(--surface);
+      color: var(--text-1);
+      overflow-x: hidden;
+      line-height: 1.6;
+    }
 
-        .navbar-brand {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: #2c3e50;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
+    /* ── Navbar ─────────────────────────────── */
+    .site-nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+      background: #0f172a;
+      border-bottom: 1px solid #1e293b;
+      padding: 0;
+      height: 58px;
+      display: flex; align-items: center;
+    }
 
-        .navbar-brand i {
-            color: #714b67;
-            font-size: 1.8rem;
-        }
+    .site-nav .container {
+      display: flex; align-items: center; justify-content: space-between;
+    }
 
-        .nav-link {
-            color: #64748b;
-            font-weight: 500;
-            margin: 0 1rem;
-            transition: color 0.3s;
-        }
+    .nav-logo {
+      display: flex; align-items: center; gap: 10px;
+      font-weight: 800; font-size: 1rem; color: #f8fafc;
+      text-decoration: none; letter-spacing: -.025em;
+    }
 
-        .nav-link:hover {
-            color: #714b67;
-        }
+    .logo-icon {
+      width: 32px; height: 32px;
+      background: var(--brand);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1rem; color: #fff;
+    }
 
-        .btn-login {
-            color: #64748b;
-            border: 2px solid #e2e8f0;
-            padding: 0.5rem 1.5rem;
-            border-radius: 8px;
-            font-weight: 500;
-            transition: all 0.3s;
-        }
+    .nav-links { display: flex; align-items: center; gap: .15rem; }
+    .nav-links a {
+      color: #94a3b8; font-size: .875rem; font-weight: 500;
+      padding: .45rem .9rem; border-radius: 6px;
+      text-decoration: none; transition: all .18s;
+    }
+    .nav-links a:hover { color: #e2e8f0; background: rgba(255,255,255,.08); }
 
-        .btn-login:hover {
-            border-color: #714b67;
-            color: #714b67;
-        }
+    .btn-nav-login {
+      color: #94a3b8 !important;
+      border: 1px solid rgba(255,255,255,.15);
+      border-radius: 7px; padding: .42rem .9rem;
+      font-size: .875rem; font-weight: 600;
+      text-decoration: none; transition: all .18s;
+    }
+    .btn-nav-login:hover { color: #e2e8f0 !important; border-color: rgba(255,255,255,.3); }
 
-        .btn-primary-custom {
-            background: #714b67;
-            color: white;
-            border: none;
-            padding: 0.75rem 2rem;
-            border-radius: 8px;
-            font-weight: 600;
-            transition: all 0.3s;
-            box-shadow: 0 4px 6px rgba(113, 75, 103, 0.2);
-        }
+    .btn-nav-cta {
+      background: var(--brand); color: #fff !important;
+      border-radius: 7px; padding: .45rem 1.1rem;
+      font-size: .875rem; font-weight: 700;
+      text-decoration: none; transition: all .18s;
+      border: none;
+    }
+    .btn-nav-cta:hover { background: var(--brand-dark); transform: translateY(-1px); }
 
-        .btn-primary-custom:hover {
-            background: #5a3c52;
-            transform: translateY(-2px);
-            box-shadow: 0 6px 12px rgba(113, 75, 103, 0.3);
-        }
+    /* ── Hero ───────────────────────────────── */
+    .hero {
+      padding: 7.5rem 0 5rem;
+      background: #0f172a;
+      position: relative;
+      overflow: hidden;
+    }
 
-        /* Hero Section */
-        .hero-section {
-            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-            padding: 8rem 0 6rem;
-            text-align: center;
-        }
+    .hero::before {
+      content: '';
+      position: absolute; inset: 0;
+      background:
+        radial-gradient(ellipse 70% 50% at 50% 0%, rgba(109,40,217,.2) 0%, transparent 65%);
+      pointer-events: none;
+    }
 
-        .hero-title {
-            font-size: 3.5rem;
-            font-weight: 700;
-            color: #1e293b;
-            margin-bottom: 1.5rem;
-            line-height: 1.2;
-        }
+    /* Subtle grid */
+    .hero::after {
+      content: '';
+      position: absolute; inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
+      background-size: 48px 48px;
+      pointer-events: none;
+    }
 
-        .hero-subtitle {
-            font-size: 1.25rem;
-            color: #64748b;
-            max-width: 600px;
-            margin: 0 auto 3rem;
-            line-height: 1.6;
-        }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 7px;
+      background: rgba(109,40,217,.15);
+      border: 1px solid rgba(167,139,250,.25);
+      color: #c4b5fd;
+      padding: .35rem .9rem; border-radius: 50px;
+      font-size: .78rem; font-weight: 600;
+      letter-spacing: .02em; margin-bottom: 1.5rem;
+    }
 
-        .hero-cta {
-            display: flex;
-            gap: 1rem;
-            justify-content: center;
-            align-items: center;
-        }
+    .hero-badge .dot {
+      width: 6px; height: 6px; background: #a78bfa;
+      border-radius: 50%; animation: blink 2s infinite;
+    }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.4} }
 
-        .btn-hero-primary {
-            background: #714b67;
-            color: white;
-            border: none;
-            padding: 1rem 2.5rem;
-            border-radius: 10px;
-            font-weight: 600;
-            font-size: 1.1rem;
-            transition: all 0.3s;
-            box-shadow: 0 4px 6px rgba(113, 75, 103, 0.2);
-        }
+    .hero h1 {
+      font-size: clamp(2.2rem, 4.5vw, 3.5rem);
+      font-weight: 800; line-height: 1.12;
+      letter-spacing: -.04em; color: #f8fafc;
+      margin-bottom: 1.25rem;
+    }
 
-        .btn-hero-primary:hover {
-            background: #5a3c52;
-            transform: translateY(-2px);
-            box-shadow: 0 8px 15px rgba(113, 75, 103, 0.3);
-        }
+    .hero h1 .accent {
+      background: linear-gradient(135deg, #a78bfa, #818cf8);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
 
-        .btn-hero-secondary {
-            background: white;
-            color: #64748b;
-            border: 2px solid #e2e8f0;
-            padding: 1rem 2.5rem;
-            border-radius: 10px;
-            font-weight: 600;
-            font-size: 1.1rem;
-            transition: all 0.3s;
-        }
+    .hero-sub {
+      font-size: 1rem; color: #94a3b8;
+      max-width: 500px; line-height: 1.7; margin-bottom: 2.25rem;
+    }
 
-        .btn-hero-secondary:hover {
-            border-color: #714b67;
-            color: #714b67;
-        }
+    .hero-actions { display: flex; gap: .85rem; flex-wrap: wrap; margin-bottom: 2rem; }
 
-        /* Features Section */
-        .features-section {
-            padding: 6rem 0;
-            background: white;
-        }
+    .btn-hero-primary {
+      background: var(--brand); color: #fff; border: none;
+      padding: .8rem 1.75rem; border-radius: 9px;
+      font-weight: 700; font-size: .95rem; text-decoration: none;
+      display: inline-flex; align-items: center; gap: 7px;
+      transition: all .18s;
+      box-shadow: 0 0 24px rgba(109,40,217,.35);
+    }
+    .btn-hero-primary:hover { background: var(--brand-dark); color: #fff; transform: translateY(-2px); }
 
-        .section-title {
-            text-align: center;
-            font-size: 2.5rem;
-            font-weight: 700;
-            color: #1e293b;
-            margin-bottom: 1rem;
-        }
+    .btn-hero-secondary {
+      background: rgba(255,255,255,.07);
+      color: #e2e8f0; border: 1px solid rgba(255,255,255,.15);
+      padding: .8rem 1.75rem; border-radius: 9px;
+      font-weight: 600; font-size: .95rem; text-decoration: none;
+      display: inline-flex; align-items: center; gap: 7px;
+      transition: all .18s;
+    }
+    .btn-hero-secondary:hover { background: rgba(255,255,255,.12); color: #fff; }
 
-        .section-subtitle {
-            text-align: center;
-            font-size: 1.1rem;
-            color: #64748b;
-            max-width: 600px;
-            margin: 0 auto 4rem;
-        }
+    .hero-trust {
+      display: flex; align-items: center; gap: 1.25rem; flex-wrap: wrap;
+    }
+    .trust-item {
+      display: flex; align-items: center; gap: 6px;
+      color: #64748b; font-size: .8rem; font-weight: 500;
+    }
+    .trust-item i { color: var(--green); }
 
-        .feature-card {
-            background: white;
-            border: 1px solid #e2e8f0;
-            border-radius: 16px;
-            padding: 2.5rem;
-            transition: all 0.3s;
-            height: 100%;
-            text-align: center;
-        }
+    /* ── Dashboard mockup ───────────────────── */
+    .hero-visual { animation: floatY 6s ease-in-out infinite; }
+    @keyframes floatY { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
 
-        .feature-card:hover {
-            transform: translateY(-8px);
-            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.08);
-            border-color: #714b67;
-        }
+    .mockup-window {
+      background: #1e293b;
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 12px; overflow: hidden;
+      box-shadow: 0 32px 64px rgba(0,0,0,.5);
+    }
 
-        .feature-icon {
-            width: 70px;
-            height: 70px;
-            background: linear-gradient(135deg, #714b67 0%, #5a3c52 100%);
-            border-radius: 16px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto 1.5rem;
-            font-size: 2rem;
-            color: white;
-        }
+    .mockup-bar {
+      background: #0f172a;
+      padding: .65rem 1rem;
+      display: flex; align-items: center; gap: .45rem;
+      border-bottom: 1px solid rgba(255,255,255,.07);
+    }
 
-        .feature-title {
-            font-size: 1.4rem;
-            font-weight: 600;
-            color: #1e293b;
-            margin-bottom: 1rem;
-        }
+    .dot-r { width:10px;height:10px;border-radius:50%;background:#ef4444; }
+    .dot-a { width:10px;height:10px;border-radius:50%;background:#f59e0b; }
+    .dot-g { width:10px;height:10px;border-radius:50%;background:#10b981; }
 
-        .feature-description {
-            font-size: 1rem;
-            color: #64748b;
-            line-height: 1.6;
-        }
+    .mockup-url {
+      background: #334155; border-radius: 4px;
+      padding: .18rem .65rem; font-size: .68rem;
+      color: #94a3b8; margin-left: .5rem;
+      font-family: 'JetBrains Mono', monospace;
+    }
 
-        /* Stats Section */
-        .stats-section {
-            background: linear-gradient(135deg, #714b67 0%, #5a3c52 100%);
-            padding: 4rem 0;
-            color: white;
-        }
+    .mockup-body { padding: 1rem; }
 
-        .stat-item {
-            text-align: center;
-            padding: 2rem 0;
-        }
+    /* Odoo-style mini stat cards inside mockup */
+    .mock-stats { display: grid; grid-template-columns: repeat(4,1fr); gap: .5rem; margin-bottom: .85rem; }
 
-        .stat-number {
-            font-size: 3rem;
-            font-weight: 700;
-            margin-bottom: 0.5rem;
-        }
+    .mock-stat {
+      background: #fff; border-radius: 8px;
+      padding: .6rem .7rem;
+      border-bottom: 3px solid transparent;
+    }
+    .mock-stat .ms-lbl { font-size: .55rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: .05em; margin-bottom: .2rem; }
+    .mock-stat .ms-val { font-size: 1.1rem; font-weight: 800; color: #0f172a; line-height: 1; }
+    .ms-g { border-bottom-color: #059669; }
+    .ms-a { border-bottom-color: #d97706; }
+    .ms-r { border-bottom-color: #dc2626; }
+    .ms-b { border-bottom-color: #2563eb; }
 
-        .stat-label {
-            font-size: 1.1rem;
-            opacity: 0.9;
-        }
+    .mock-chart {
+      background: #fff; border-radius: 8px; padding: .7rem; margin-bottom: .6rem;
+    }
+    .mc-lbl { font-size: .6rem; font-weight: 700; color: #64748b; margin-bottom: .5rem; text-transform: uppercase; letter-spacing: .05em; }
+    .chart-bars { display: flex; align-items: flex-end; gap: 3px; height: 48px; }
+    .bar { flex: 1; border-radius: 2px 2px 0 0; background: var(--brand); opacity: .5; min-height: 3px; }
+    .bar.hi { opacity: 1; }
 
-        /* CTA Section */
-        .cta-section {
-            background: #f8fafc;
-            padding: 6rem 0;
-            text-align: center;
-        }
+    .mock-table { background: #fff; border-radius: 8px; overflow: hidden; }
+    .mock-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: .38rem .6rem; font-size: .65rem;
+    }
+    .mock-row:not(:last-child) { border-bottom: 1px solid #f1f5f9; }
+    .mock-row span:first-child { font-weight: 600; color: #0f172a; }
+    .mock-row span:nth-child(2) { color: #94a3b8; }
+    .mock-pill { padding: .12rem .45rem; border-radius: 4px; font-size: .6rem; font-weight: 700; }
+    .pill-g { background: #ecfdf5; color: #059669; }
+    .pill-a { background: #fffbeb; color: #d97706; }
+    .pill-r { background: #fef2f2; color: #dc2626; }
 
-        .cta-title {
-            font-size: 2.5rem;
-            font-weight: 700;
-            color: #1e293b;
-            margin-bottom: 1.5rem;
-        }
+    /* Floating badges */
+    .float-badge {
+      position: absolute;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 10px; padding: .65rem .9rem;
+      display: flex; align-items: center; gap: .6rem;
+      box-shadow: 0 8px 24px rgba(0,0,0,.12);
+      font-size: .78rem; font-weight: 600; color: var(--text-1);
+      white-space: nowrap;
+    }
+    .fb-icon {
+      width: 30px; height: 30px; border-radius: 7px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: .9rem;
+    }
+    .fb-sub { font-size: .68rem; color: var(--text-3); font-weight: 400; }
 
-        .cta-subtitle {
-            font-size: 1.2rem;
-            color: #64748b;
-            margin-bottom: 2.5rem;
-        }
+    .badge-ai    { bottom: 8%; left: -6%; animation: floatY 5s ease-in-out infinite .5s; }
+    .badge-alert { top: 12%; right: -5%; animation: floatY 5s ease-in-out infinite 1s; }
 
-        /* Footer */
-        .footer {
-            background: #1e293b;
-            color: #94a3b8;
-            padding: 3rem 0 2rem;
-        }
+    /* ── Sections ───────────────────────────── */
+    section { padding: 5rem 0; }
 
-        .footer-brand {
-            font-size: 1.3rem;
-            font-weight: 700;
-            color: white;
-            margin-bottom: 1rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
+    .section-tag {
+      display: inline-block;
+      background: var(--brand-pale);
+      border: 1px solid rgba(109,40,217,.15);
+      color: var(--brand);
+      padding: .28rem .85rem; border-radius: 50px;
+      font-size: .75rem; font-weight: 700;
+      letter-spacing: .05em; text-transform: uppercase;
+      margin-bottom: .85rem;
+    }
 
-        .footer-brand i {
-            color: #714b67;
-        }
+    .section-title {
+      font-size: clamp(1.7rem, 3vw, 2.4rem);
+      font-weight: 800; letter-spacing: -.035em; line-height: 1.2;
+      margin-bottom: .85rem; color: var(--text-1);
+    }
 
-        .footer-text {
-            color: #94a3b8;
-            line-height: 1.6;
-        }
+    .section-sub { color: var(--text-2); font-size: .95rem; max-width: 540px; line-height: 1.7; }
 
-        .footer-bottom {
-            border-top: 1px solid #334155;
-            margin-top: 2rem;
-            padding-top: 2rem;
-            text-align: center;
-            color: #64748b;
-        }
+    /* ── Features ───────────────────────────── */
+    .features-section { background: var(--bg); }
 
-        /* Responsive */
-        @media (max-width: 768px) {
-            .hero-title {
-                font-size: 2.5rem;
-            }
+    .feature-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 1.1rem; }
+    @media(max-width:992px){ .feature-grid{grid-template-columns:repeat(2,1fr);} }
+    @media(max-width:576px){ .feature-grid{grid-template-columns:1fr;} }
 
-            .hero-subtitle {
-                font-size: 1.1rem;
-            }
+    .feature-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px; padding: 1.75rem;
+      transition: all .2s;
+    }
+    .feature-card:hover {
+      border-color: rgba(109,40,217,.25);
+      box-shadow: 0 4px 20px rgba(0,0,0,.07);
+      transform: translateY(-3px);
+    }
 
-            .hero-cta {
-                flex-direction: column;
-            }
+    .feat-icon {
+      width: 48px; height: 48px; border-radius: 11px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.4rem; margin-bottom: 1.1rem;
+    }
+    .fi-purple { background: var(--brand-pale); color: var(--brand); }
+    .fi-blue   { background: #eff6ff; color: var(--blue); }
+    .fi-green  { background: #ecfdf5; color: var(--green); }
+    .fi-amber  { background: #fffbeb; color: var(--amber); }
+    .fi-red    { background: #fef2f2; color: var(--red); }
+    .fi-teal   { background: #f0fdfa; color: #0d9488; }
 
-            .section-title {
-                font-size: 2rem;
-            }
+    .feature-card h3 { font-size: 1rem; font-weight: 700; margin-bottom: .5rem; color: var(--text-1); }
+    .feature-card p  { color: var(--text-2); font-size: .875rem; line-height: 1.65; margin: 0; }
 
-            .stat-number {
-                font-size: 2.5rem;
-            }
-        }
-    </style>
+    /* ── How it works ───────────────────────── */
+    .how-section { background: var(--surface); }
+
+    .step-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 1.25rem; }
+    @media(max-width:768px){ .step-grid{grid-template-columns:repeat(2,1fr);} }
+
+    .step-card {
+      text-align: center; padding: 1.75rem 1.25rem;
+      border-radius: 14px; background: var(--bg);
+      border: 1px solid var(--border);
+    }
+
+    .step-num {
+      width: 40px; height: 40px;
+      background: var(--brand); border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: .9rem; color: #fff;
+      margin: 0 auto 1rem;
+    }
+
+    .step-card h4 { font-size: .9rem; font-weight: 700; margin-bottom: .5rem; color: var(--text-1); }
+    .step-card p  { color: var(--text-2); font-size: .825rem; line-height: 1.6; margin: 0; }
+
+    /* ── Stats ──────────────────────────────── */
+    .stats-section { background: var(--navy); padding: 4rem 0; }
+
+    .stat-block { text-align: center; padding: 1.25rem 0; }
+    .stat-block .num { font-size: 2.75rem; font-weight: 800; letter-spacing: -.04em; color: #f8fafc; line-height: 1; margin-bottom: .3rem; }
+    .stat-block .lbl { color: #64748b; font-size: .875rem; font-weight: 500; }
+
+    /* ── CTA ────────────────────────────────── */
+    .cta-section { background: var(--bg); text-align: center; }
+
+    .cta-inner {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px; padding: 3.5rem 2rem;
+      box-shadow: 0 2px 12px rgba(0,0,0,.05);
+      max-width: 600px; margin: 0 auto;
+    }
+
+    .cta-inner h2 { font-size: 2rem; font-weight: 800; letter-spacing: -.04em; margin-bottom: .75rem; }
+    .cta-inner p  { color: var(--text-2); font-size: .95rem; margin-bottom: 1.75rem; }
+
+    /* ── Footer ─────────────────────────────── */
+    .site-footer {
+      background: var(--surface);
+      border-top: 1px solid var(--navy-2);
+      padding: 3rem 0 2rem;
+    }
+
+    .footer-brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 1rem; color: #f8fafc; margin-bottom: .85rem; }
+    .footer-desc  { color: #64748b; font-size: .85rem; line-height: 1.7; max-width: 260px; }
+    .footer-label { color: #475569; font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; margin-bottom: .75rem; }
+    .footer-links { list-style: none; }
+    .footer-links li { margin-bottom: .45rem; }
+    .footer-links a { color: #64748b; font-size: .85rem; text-decoration: none; transition: color .18s; }
+    .footer-links a:hover { color: #c4b5fd; }
+
+    .footer-bottom {
+      border-top: 1px solid var(--navy-2);
+      margin-top: 2.5rem; padding-top: 1.5rem;
+      display: flex; justify-content: space-between; align-items: center;
+      flex-wrap: wrap; gap: 1rem;
+    }
+    .footer-bottom p { color: #475569; font-size: .8rem; }
+
+    .f-badge {
+      background: rgba(255,255,255,.04); border: 1px solid var(--navy-2);
+      border-radius: 5px; padding: .22rem .65rem;
+      font-size: .72rem; color: #475569; font-weight: 500;
+    }
+
+    @media(max-width:768px){
+      .hero h1 { font-size: 2.1rem; }
+      .hero-actions { flex-direction: column; }
+      .hero-visual { margin-top: 3rem; }
+      .badge-ai, .badge-alert { display: none; }
+      .footer-bottom { flex-direction: column; text-align: center; }
+    }
+
+    @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:none} }
+    .fade-up { animation: fadeUp .55s ease-out both; }
+    .d1{animation-delay:.1s} .d2{animation-delay:.2s} .d3{animation-delay:.3s} .d4{animation-delay:.4s}
+  </style>
 </head>
 <body>
-    <!-- Navigation -->
-    <nav class="navbar navbar-expand-lg">
-        <div class="container">
-            <a class="navbar-brand" href="{% url 'landing' %}">
-                <i class="bi bi-box-seam"></i>
-                Inventory System
-            </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto align-items-center">
-                    <li class="nav-item">
-                        <a class="nav-link" href="#features">Features</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#about">About</a>
-                    </li>
-                    <li class="nav-item ms-3">
-                        <a href="{% url 'users:login' %}" class="btn btn-login">Login</a>
-                    </li>
-                    <li class="nav-item ms-2">
-                        <a href="{% url 'users:register' %}" class="btn btn-primary-custom">Get Started</a>
-                    </li>
-                </ul>
-            </div>
+
+<!-- ── Navbar ──────────────────────────────── -->
+<nav class="site-nav">
+  <div class="container">
+    <a href="{% url 'landing' %}" class="nav-logo">
+      <div class="logo-icon"><i class="bi bi-box-seam"></i></div>
+      Inventory System
+    </a>
+    <div class="nav-links d-none d-md-flex">
+      <a href="#features">Features</a>
+      <a href="#how">How it works</a>
+      <a href="#about">About</a>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+      <a href="{% url 'users:login' %}"    class="btn-nav-login">Sign in</a>
+      <a href="{% url 'users:register' %}" class="btn-nav-cta">Get started</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ── Hero ────────────────────────────────── -->
+<section class="hero">
+  <div class="container">
+    <div class="row align-items-center g-5">
+      <div class="col-lg-6">
+        <div class="hero-badge fade-up"><div class="dot"></div>AI-Powered · Linear Regression · scikit-learn</div>
+        <h1 class="fade-up d1">Inventory that<br><span class="accent">thinks ahead</span><br>of you</h1>
+        <p class="hero-sub fade-up d2">Real-time stock tracking combined with machine learning demand forecasting — so you never run out, never overstock, and always know what to order next.</p>
+        <div class="hero-actions fade-up d3">
+          <a href="{% url 'users:register' %}" class="btn-hero-primary"><i class="bi bi-rocket-takeoff"></i>Start for free</a>
+          <a href="{% url 'users:login' %}"    class="btn-hero-secondary"><i class="bi bi-box-arrow-in-right"></i>Sign in</a>
         </div>
-    </nav>
-
-    <!-- Hero Section -->
-    <section class="hero-section">
-        <div class="container">
-            <h1 class="hero-title">Smart Inventory Management<br>Made Simple</h1>
-            <p class="hero-subtitle">
-                Streamline your inventory operations with AI-powered predictions, 
-                real-time analytics, and intelligent reorder suggestions.
-            </p>
-            <div class="hero-cta">
-                <a href="{% url 'users:register' %}" class="btn btn-hero-primary">
-                    <i class="bi bi-rocket-takeoff me-2"></i>Get Started Free
-                </a>
-                <a href="{% url 'users:login' %}" class="btn btn-hero-secondary">
-                    <i class="bi bi-box-arrow-in-right me-2"></i>Sign In
-                </a>
-            </div>
+        <div class="hero-trust fade-up d4">
+          <div class="trust-item"><i class="bi bi-check-circle-fill"></i>No credit card</div>
+          <div class="trust-item"><i class="bi bi-check-circle-fill"></i>Role-based access</div>
+          <div class="trust-item"><i class="bi bi-check-circle-fill"></i>Google login</div>
         </div>
-    </section>
+      </div>
 
-    <!-- Features Section -->
-    <section class="features-section" id="features">
-        <div class="container">
-            <h2 class="section-title">Powerful Features</h2>
-            <p class="section-subtitle">
-                Everything you need to manage your inventory efficiently and intelligently
-            </p>
-
-            <div class="row g-4">
-                <!-- Feature 1 -->
-                <div class="col-lg-3 col-md-6">
-                    <div class="feature-card">
-                        <div class="feature-icon">
-                            <i class="bi bi-cpu"></i>
-                        </div>
-                        <h3 class="feature-title">AI Predictions</h3>
-                        <p class="feature-description">
-                            Machine learning algorithms predict demand and suggest optimal reorder quantities
-                        </p>
-                    </div>
-                </div>
-
-                <!-- Feature 2 -->
-                <div class="col-lg-3 col-md-6">
-                    <div class="feature-card">
-                        <div class="feature-icon">
-                            <i class="bi bi-bell"></i>
-                        </div>
-                        <h3 class="feature-title">Smart Alerts</h3>
-                        <p class="feature-description">
-                            Get notified about low stock, critical items, and reorder suggestions automatically
-                        </p>
-                    </div>
-                </div>
-
-                <!-- Feature 3 -->
-                <div class="col-lg-3 col-md-6">
-                    <div class="feature-card">
-                        <div class="feature-icon">
-                            <i class="bi bi-graph-up-arrow"></i>
-                        </div>
-                        <h3 class="feature-title">Analytics Dashboard</h3>
-                        <p class="feature-description">
-                            Visualize trends, track performance, and make data-driven decisions with ease
-                        </p>
-                    </div>
-                </div>
-
-                <!-- Feature 4 -->
-                <div class="col-lg-3 col-md-6">
-                    <div class="feature-card">
-                        <div class="feature-icon">
-                            <i class="bi bi-receipt"></i>
-                        </div>
-                        <h3 class="feature-title">Transaction Management</h3>
-                        <p class="feature-description">
-                            Track sales and purchases with integrated payment gateway support
-                        </p>
-                    </div>
-                </div>
+      <!-- Mockup -->
+      <div class="col-lg-6 position-relative">
+        <div class="hero-visual">
+          <div class="mockup-window">
+            <div class="mockup-bar">
+              <div class="dot-r"></div><div class="dot-a"></div><div class="dot-g"></div>
+              <div class="mockup-url">127.0.0.1:8000/users/dashboard/</div>
             </div>
-        </div>
-    </section>
-
-    <!-- Stats Section -->
-    <section class="stats-section">
-        <div class="container">
-            <div class="row">
-                <div class="col-md-4">
-                    <div class="stat-item">
-                        <div class="stat-number">
-                            <i class="bi bi-check-circle me-2"></i>99%
-                        </div>
-                        <div class="stat-label">Prediction Accuracy</div>
-                    </div>
+            <div class="mockup-body">
+              <div style="font-size:.6rem;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:.65rem;">Dashboard Overview</div>
+              <div class="mock-stats">
+                <div class="mock-stat ms-g"><div class="ms-lbl">Total Items</div><div class="ms-val">12</div></div>
+                <div class="mock-stat ms-a"><div class="ms-lbl">Low Stock</div><div class="ms-val" style="color:#d97706;">3</div></div>
+                <div class="mock-stat ms-r"><div class="ms-lbl">Out of Stock</div><div class="ms-val" style="color:#dc2626;">0</div></div>
+                <div class="mock-stat ms-b"><div class="ms-lbl">Total Value</div><div class="ms-val" style="color:#2563eb;font-size:.8rem;">Rs.1.7M</div></div>
+              </div>
+              <div class="mock-chart">
+                <div class="mc-lbl">Sales — Last 7 Days</div>
+                <div class="chart-bars">
+                  <div class="bar" style="height:28%"></div>
+                  <div class="bar" style="height:42%"></div>
+                  <div class="bar" style="height:35%"></div>
+                  <div class="bar" style="height:58%"></div>
+                  <div class="bar hi" style="height:82%"></div>
+                  <div class="bar" style="height:52%"></div>
+                  <div class="bar hi" style="height:100%"></div>
                 </div>
-                <div class="col-md-4">
-                    <div class="stat-item">
-                        <div class="stat-number">
-                            <i class="bi bi-lightning me-2"></i>Real-time
-                        </div>
-                        <div class="stat-label">Stock Updates</div>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="stat-item">
-                        <div class="stat-number">
-                            <i class="bi bi-shield-check me-2"></i>100%
-                        </div>
-                        <div class="stat-label">Secure & Reliable</div>
-                    </div>
-                </div>
+              </div>
+              <div class="mock-table">
+                <div class="mock-row"><span>Laptop</span><span>10 units</span><span class="mock-pill pill-g">In Stock</span></div>
+                <div class="mock-row"><span>Monitor</span><span>6 units</span><span class="mock-pill pill-a">Low Stock</span></div>
+                <div class="mock-row"><span>Headphones</span><span>12 units</span><span class="mock-pill pill-g">In Stock</span></div>
+                <div class="mock-row"><span>Guitar</span><span>2 units</span><span class="mock-pill pill-r">Reorder Now</span></div>
+              </div>
             </div>
-        </div>
-    </section>
+          </div>
 
-    <!-- CTA Section -->
-    <section class="cta-section" id="about">
-        <div class="container">
-            <h2 class="cta-title">Ready to Transform Your Inventory?</h2>
-            <p class="cta-subtitle">
-                Join modern businesses using AI-powered inventory management
-            </p>
-            <a href="{% url 'users:register' %}" class="btn btn-hero-primary">
-                <i class="bi bi-rocket-takeoff me-2"></i>Start Your Free Trial
-            </a>
+          <!-- Floating badges — now white to match app style -->
+          <div class="float-badge badge-ai">
+            <div class="fb-icon" style="background:#f5f3ff;color:#6d28d9;"><i class="bi bi-robot"></i></div>
+            <div><div>AI Prediction</div><div class="fb-sub">Order 50 units today</div></div>
+          </div>
+          <div class="float-badge badge-alert">
+            <div class="fb-icon" style="background:#fffbeb;color:#d97706;"><i class="bi bi-exclamation-triangle"></i></div>
+            <div><div>Low Stock Alert</div><div class="fb-sub">Monitor — 6 units left</div></div>
+          </div>
         </div>
-    </section>
+      </div>
+    </div>
+  </div>
+</section>
 
-    <!-- Footer -->
-    <footer class="footer">
-        <div class="container">
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="footer-brand">
-                        <i class="bi bi-box-seam"></i>
-                        Inventory System
-                    </div>
-                    <p class="footer-text">
-                        Modern inventory management powered by artificial intelligence.
-                        Built for efficiency, designed for growth.
-                    </p>
-                </div>
-                <div class="col-md-6 text-md-end">
-                    <p class="footer-text mt-4">
-                        <i class="bi bi-envelope me-2"></i>support@inventorysystem.com<br>
-                        <i class="bi bi-telephone me-2"></i>+977 9824390543
-                    </p>
-                </div>
-            </div>
-            <div class="footer-bottom">
-                <p>&copy; 2026 Inventory Management System. All rights reserved.</p>
-            </div>
-        </div>
-    </footer>
+<!-- ── Features ─────────────────────────────── -->
+<section class="features-section" id="features">
+  <div class="container">
+    <div class="text-center mb-5">
+      <div class="section-tag">Features</div>
+      <h2 class="section-title">Everything your inventory needs</h2>
+      <p class="section-sub mx-auto">Built for small businesses and academic institutions that need smart stock control without complexity.</p>
+    </div>
+    <div class="feature-grid">
+      <div class="feature-card"><div class="feat-icon fi-purple"><i class="bi bi-cpu"></i></div><h3>AI Demand Forecasting</h3><p>Linear Regression models trained on your sales history predict future demand and suggest optimal reorder quantities.</p></div>
+      <div class="feature-card"><div class="feat-icon fi-blue"><i class="bi bi-speedometer2"></i></div><h3>Real-time Dashboard</h3><p>Live KPI cards, 7-day sales trends, and stock alerts — all visible the moment you log in.</p></div>
+      <div class="feature-card"><div class="feat-icon fi-green"><i class="bi bi-graph-up-arrow"></i></div><h3>Analytics & Reports</h3><p>Monthly sales vs purchases, top products chart, revenue trends, and CSV export for deeper analysis.</p></div>
+      <div class="feature-card"><div class="feat-icon fi-amber"><i class="bi bi-receipt"></i></div><h3>Transaction Management</h3><p>Record sales and purchases with payment gateway support. Every transaction feeds the AI model.</p></div>
+      <div class="feature-card"><div class="feat-icon fi-teal"><i class="bi bi-shield-lock"></i></div><h3>Role-based Access</h3><p>Admin, Manager, and Staff roles with approval workflow. Google OAuth login with admin approval gate.</p></div>
+      <div class="feature-card"><div class="feat-icon fi-red"><i class="bi bi-bell-fill"></i></div><h3>Smart Alerts</h3><p>AI-powered reorder alerts appear on your dashboard when stock is predicted to run out before the next restock.</p></div>
+    </div>
+  </div>
+</section>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
+<!-- ── How it works ──────────────────────────── -->
+<section class="how-section" id="how">
+  <div class="container">
+    <div class="text-center mb-5">
+      <div class="section-tag">How it works</div>
+      <h2 class="section-title">From signup to insights in minutes</h2>
+      <p class="section-sub mx-auto">No complex setup. Add your items, record transactions, and let the AI do the rest.</p>
+    </div>
+    <div class="step-grid">
+      <div class="step-card"><div class="step-num">1</div><h4>Create your account</h4><p>Register with email or Google. Admin approves your access and assigns your role.</p></div>
+      <div class="step-card"><div class="step-num">2</div><h4>Add inventory items</h4><p>Add products with price, cost, reorder level and lead time. Images auto-fetch from Unsplash.</p></div>
+      <div class="step-card"><div class="step-num">3</div><h4>Record transactions</h4><p>Log every sale and purchase. The system tracks stock levels in real-time automatically.</p></div>
+      <div class="step-card"><div class="step-num">4</div><h4>AI predicts & alerts</h4><p>The ML model learns your demand patterns and tells you exactly when and how much to reorder.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Stats ─────────────────────────────────── -->
+<section class="stats-section">
+  <div class="container">
+    <div class="row text-center">
+      <div class="col-md-3 col-6"><div class="stat-block"><div class="num">5</div><div class="lbl">Core modules</div></div></div>
+      <div class="col-md-3 col-6"><div class="stat-block"><div class="num">AI</div><div class="lbl">Demand forecasting</div></div></div>
+      <div class="col-md-3 col-6"><div class="stat-block"><div class="num">3</div><div class="lbl">User roles</div></div></div>
+      <div class="col-md-3 col-6"><div class="stat-block"><div class="num">100%</div><div class="lbl">Open source</div></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ── CTA ───────────────────────────────────── -->
+<section class="cta-section" id="about">
+  <div class="container">
+    <div class="cta-inner">
+      <div class="section-tag">Get started today</div>
+      <h2>Ready to take control?</h2>
+      <p>AI-powered inventory management, free to use, no credit card required.</p>
+      <div class="d-flex gap-3 justify-content-center flex-wrap">
+        <a href="{% url 'users:register' %}" class="btn-hero-primary"><i class="bi bi-rocket-takeoff"></i>Create free account</a>
+        <a href="{% url 'users:login' %}"    style="display:inline-flex;align-items:center;gap:7px;padding:.8rem 1.75rem;border-radius:9px;font-weight:600;font-size:.95rem;text-decoration:none;border:1.5px solid var(--border);color:var(--text-2);transition:all .18s;" onmouseover="this.style.borderColor='var(--brand)';this.style.color='var(--brand)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-2)'"><i class="bi bi-box-arrow-in-right"></i>Sign in</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Footer ────────────────────────────────── -->
+<footer class="site-footer">
+  <div class="container">
+    <div class="row g-4">
+      <div class="col-lg-4">
+        <div class="footer-brand"><div class="logo-icon"><i class="bi bi-box-seam"></i></div>Inventory System</div>
+        <p class="footer-desc">Modern inventory management powered by machine learning. Built for small businesses and academic institutions.</p>
+      </div>
+      <div class="col-lg-2 col-6">
+        <div class="footer-label">Product</div>
+        <ul class="footer-links">
+          <li><a href="#features">Features</a></li>
+          <li><a href="#how">How it works</a></li>
+          <li><a href="{% url 'users:login' %}">Dashboard</a></li>
+        </ul>
+      </div>
+      <div class="col-lg-2 col-6">
+        <div class="footer-label">Account</div>
+        <ul class="footer-links">
+          <li><a href="{% url 'users:login' %}">Sign in</a></li>
+          <li><a href="{% url 'users:register' %}">Register</a></li>
+          <li><a href="{% url 'users:password_reset' %}">Reset password</a></li>
+        </ul>
+      </div>
+      <div class="col-lg-4">
+        <div class="footer-label">Contact</div>
+        <ul class="footer-links">
+          <li><a href="/cdn-cgi/l/email-protection#e390828e81918a878b8a93d6a3848e828a8fcd808c8e"><i class="bi bi-envelope me-2"></i><span class="__cf_email__" data-cfemail="92e1f3fff0e0fbf6fafbe2a7d2f5fff3fbfebcf1fdff">[email&#160;protected]</span></a></li>
+          <li><a href="#"><i class="bi bi-geo-alt me-2"></i>Herald College Kathmandu</a></li>
+          <li><a href="#"><i class="bi bi-mortarboard me-2"></i>University of Wolverhampton</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>&copy; 2026 Inventory Management System · Sambridi Pokhrel · 2418255</p>
+      <div class="d-flex gap-2 flex-wrap">
+        <span class="f-badge">Django 6.0</span>
+        <span class="f-badge">scikit-learn</span>
+        <span class="f-badge">MySQL</span>
+        <span class="f-badge">Bootstrap 5</span>
+      </div>
+    </div

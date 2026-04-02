@@ -1,457 +1,262 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Create Transaction - Inventory Management</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link href="/static/css/emerald-theme.css?v=2" rel="stylesheet">
-</head>
-<body class="fade-in">
-    <!-- Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-light">
-        <div class="container">
-            <a class="navbar-brand" href="{% url 'users:dashboard' %}">
-                <i class="bi bi-box-seam me-2"></i>
-                Inventory System
-            </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto">
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'users:dashboard' %}">
-                            <i class="bi bi-speedometer2 me-1"></i>Dashboard
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'inventory:item_list' %}">
-                            <i class="bi bi-box me-1"></i>Inventory
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link active" href="{% url 'inventory:transaction_list' %}">
-                            <i class="bi bi-receipt me-1"></i>Transactions
-                        </a>
-                    </li>
-                    {% if user.is_superuser %}
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'users:user_management' %}">
-                            <i class="bi bi-people me-1"></i>Users
-                        </a>
-                    </li>
-                    {% endif %}
-                </ul>
-                <ul class="navbar-nav">
-                    <li class="nav-item">
-                        <span class="nav-link">
-                            <i class="bi bi-person-circle me-1"></i>{{ user.first_name|default:user.username }}
-                        </span>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'users:logout' %}">
-                            <i class="bi bi-box-arrow-right me-1"></i>Logout
-                        </a>
-                    </li>
-                </ul>
-            </div>
-        </div>
-    </nav>
+{% extends 'base.html' %}
+{% load inventory_extras %}
 
-    <!-- Header Section -->
-    <div class="dashboard-header">
-        <div class="container">
-            <div class="row align-items-center">
-                <div class="col-md-8">
-                    <h1 class="display-5 fw-bold mb-2">
-                        <i class="bi bi-plus-circle me-3"></i>
-                        Create Transaction
-                    </h1>
-                    <p class="lead mb-0">Record a new sale or purchase transaction</p>
-                </div>
-                <div class="col-md-4 text-md-end">
-                    <a href="{% url 'inventory:transaction_list' %}" class="btn btn-outline-light">
-                        <i class="bi bi-arrow-left me-1"></i>Back to Transactions
-                    </a>
-                </div>
-            </div>
-        </div>
+{% block title %}Create Transaction | Inventory System{% endblock %}
+
+{% block header %}
+<div class="dashboard-header">
+  <div class="container">
+    <div class="row align-items-center">
+      <div class="col-md-8">
+        <h1 class="display-5 fw-bold mb-2"><i class="bi bi-plus-circle me-3"></i>Create Transaction</h1>
+        <p class="lead mb-0">Record a new sale or purchase transaction</p>
+      </div>
+      <div class="col-md-4 text-md-end">
+        <a href="{% url 'inventory:transaction_list' %}" class="btn btn-outline-light">
+          <i class="bi bi-arrow-left me-1"></i>Back to Transactions
+        </a>
+      </div>
     </div>
+  </div>
+</div>
+{% endblock %}
 
-    <!-- Messages -->
-    {% if messages %}
-        <div class="container mb-4">
-            {% for message in messages %}
-                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-                    {% if message.tags == 'error' %}
-                        <i class="bi bi-exclamation-triangle me-2"></i>
-                    {% elif message.tags == 'success' %}
-                        <i class="bi bi-check-circle me-2"></i>
-                    {% else %}
-                        <i class="bi bi-info-circle me-2"></i>
-                    {% endif %}
-                    {{ message }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
-            {% endfor %}
+{% block content %}
+<div class="container py-4">
+  <div class="row justify-content-center">
+    <div class="col-lg-8">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header" style="background:linear-gradient(135deg,#714b67,#9c7a8a);color:#fff;border-radius:8px 8px 0 0;">
+          <h5 class="mb-0"><i class="bi bi-receipt me-2"></i>Transaction Details</h5>
         </div>
-    {% endif %}
+        <div class="card-body p-4">
+          <form method="post" class="needs-validation" novalidate>
+            {% csrf_token %}
 
-    <!-- Main Content -->
-    <div class="container">
-        <div class="row justify-content-center">
-            <div class="col-lg-8">
-                <div class="card">
-                    <div class="card-header bg-light">
-                        <h5 class="card-title mb-0">
-                            <i class="bi bi-receipt me-2 text-primary"></i>
-                            Transaction Details
-                        </h5>
-                    </div>
-                    <div class="card-body">
-                        <form method="post" class="needs-validation" novalidate>
-                            {% csrf_token %}
-                            
-                            <div class="row">
-                                <!-- Transaction Type -->
-                                <div class="col-md-6 mb-3">
-                                    <label for="transaction_type" class="form-label fw-bold">
-                                        <i class="bi bi-arrow-up-down me-2 text-primary"></i>
-                                        Transaction Type
-                                    </label>
-                                    <select class="form-select" id="transaction_type" name="transaction_type" required>
-                                        <option value="">Select Type</option>
-                                        <option value="SALE">Sale</option>
-                                        <option value="PURCHASE">Purchase</option>
-                                    </select>
-                                </div>
-
-                                <!-- Item Selection -->
-                                <div class="col-md-6 mb-3">
-                                    <label for="item" class="form-label fw-bold">
-                                        <i class="bi bi-box me-2 text-primary"></i>
-                                        Item
-                                    </label>
-                                    <select class="form-select" id="item" name="item" required>
-                                        <option value="">Select Item</option>
-                                        {% for item in items %}
-                                            <option value="{{ item.id }}">{{ item.name }} (Stock: {{ item.quantity }})</option>
-                                        {% endfor %}
-                                    </select>
-                                </div>
-                            </div>
-
-                            <!-- Supplier/Customer Section (Dynamic) -->
-                            <div class="row">
-                                <!-- Supplier (for PURCHASE) -->
-                                <div class="col-md-6 mb-3" id="supplier-field" style="display: none;">
-                                    <label for="supplier" class="form-label fw-bold">
-                                        <i class="bi bi-truck me-2 text-primary"></i>
-                                        Supplier
-                                    </label>
-                                    <select class="form-select" id="supplier" name="supplier">
-                                        <option value="">Select Supplier</option>
-                                        {% for supplier in suppliers %}
-                                            <option value="{{ supplier.id }}">{{ supplier.name }}</option>
-                                        {% endfor %}
-                                    </select>
-                                    <small class="text-muted">Select the supplier for this purchase</small>
-                                </div>
-
-                                <!-- Customer (for SALE) -->
-                                <div class="col-md-6 mb-3" id="customer-field" style="display: none;">
-                                    <label for="customer" class="form-label fw-bold">
-                                        <i class="bi bi-person me-2 text-primary"></i>
-                                        Customer
-                                    </label>
-                                    <select class="form-select" id="customer" name="customer">
-                                        <option value="">Select Customer</option>
-                                        {% for customer in customers %}
-                                            <option value="{{ customer.id }}">{{ customer.name }}</option>
-                                        {% endfor %}
-                                    </select>
-                                    <small class="text-muted">Select the customer for this sale</small>
-                                </div>
-                            </div>
-
-                            <div class="row">
-                                <!-- Quantity -->
-                                <div class="col-md-4 mb-3">
-                                    <label for="quantity" class="form-label fw-bold">
-                                        <i class="bi bi-hash me-2 text-primary"></i>
-                                        Quantity
-                                    </label>
-                                    <input type="number" class="form-control" id="quantity" name="quantity" 
-                                           min="1" step="1" required placeholder="Enter quantity">
-                                </div>
-
-                                <!-- Unit Price -->
-                                <div class="col-md-4 mb-3">
-                                    <label for="unit_price" class="form-label fw-bold">
-                                        <i class="bi bi-currency-rupee me-2 text-primary"></i>
-                                        Unit Price
-                                    </label>
-                                    <div class="input-group">
-                                        <span class="input-group-text">Rs.</span>
-                                        <input type="number" class="form-control" id="unit_price" name="unit_price" 
-                                               min="0" step="0.01" required placeholder="0.00">
-                                    </div>
-                                </div>
-
-                                <!-- Total Amount (Auto-calculated) -->
-                                <div class="col-md-4 mb-3">
-                                    <label class="form-label fw-bold">
-                                        <i class="bi bi-calculator me-2 text-primary"></i>
-                                        Total Amount
-                                    </label>
-                                    <div class="input-group">
-                                        <span class="input-group-text">Rs.</span>
-                                        <input type="text" class="form-control" id="totalAmount" readonly 
-                                               placeholder="0.00" style="background-color: #f8f9fa;">
-                                    </div>
-                                    <small class="text-muted">Automatically calculated</small>
-                                </div>
-                            </div>
-
-                            <!-- Payment Information -->
-                            <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    <label for="payment_method" class="form-label fw-bold">
-                                        <i class="bi bi-credit-card me-2 text-primary"></i>
-                                        Payment Method
-                                    </label>
-                                    <select class="form-select" id="payment_method" name="payment_method" required>
-                                        <option value="KHALTI">Khalti (Digital Wallet)</option>
-                                        <option value="ESEWA">eSewa (Digital Wallet)</option>
-                                        <option value="CASH">Cash</option>
-                                        <option value="BANK_TRANSFER">Bank Transfer</option>
-                                        <option value="CREDIT">Credit</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <div class="alert alert-info mb-0">
-                                        <i class="bi bi-info-circle me-2"></i>
-                                        <strong>Payment Processing:</strong>
-                                        <div id="payment-info">
-                                            <small>Khalti and eSewa payments are processed automatically</small>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Notes -->
-                            <div class="mb-4">
-                                <label for="notes" class="form-label fw-bold">
-                                    <i class="bi bi-chat-text me-2 text-primary"></i>
-                                    Notes (Optional)
-                                </label>
-                                <textarea class="form-control" id="notes" name="notes" rows="3" 
-                                          placeholder="Add any additional information about this transaction"></textarea>
-                                <small class="text-muted">Add any additional information about this transaction</small>
-                            </div>
-
-                            <!-- Current Stock Info -->
-                            <div class="alert alert-info" id="stockInfo" style="display: none;">
-                                <i class="bi bi-info-circle me-2"></i>
-                                <strong>Current Stock:</strong> <span id="currentStock">-</span> units
-                                <div id="reorderInfo" class="mt-2" style="display: none;">
-                                    <i class="bi bi-arrow-repeat me-2 text-warning"></i>
-                                    <strong>Reorder Suggested:</strong> <span id="reorderQuantity">-</span> units
-                                </div>
-                                <div id="stockWarning" class="mt-2" style="display: none;">
-                                    <i class="bi bi-exclamation-triangle me-2"></i>
-                                    <strong>Warning:</strong> This sale will result in insufficient stock!
-                                </div>
-                            </div>
-
-                            <!-- Form Actions -->
-                            <div class="d-flex justify-content-between">
-                                <a href="{% url 'inventory:transaction_list' %}" class="btn btn-outline-secondary">
-                                    <i class="bi bi-x-circle me-1"></i>Cancel
-                                </a>
-                                <button type="submit" class="btn btn-primary">
-                                    <i class="bi bi-check-circle me-1"></i>Create Transaction
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-
-                <!-- Transaction Type Info -->
-                <div class="row mt-4">
-                    <div class="col-md-6">
-                        <div class="card border-success">
-                            <div class="card-body text-center">
-                                <i class="bi bi-arrow-up-circle display-4 text-success mb-3"></i>
-                                <h5 class="text-success">Sale Transaction</h5>
-                                <p class="text-muted mb-0">
-                                    Records item sales and reduces inventory stock
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="card border-info">
-                            <div class="card-body text-center">
-                                <i class="bi bi-arrow-down-circle display-4 text-info mb-3"></i>
-                                <h5 class="text-info">Purchase Transaction</h5>
-                                <p class="text-muted mb-0">
-                                    Records item purchases and increases inventory stock
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label for="transaction_type" class="form-label fw-bold">
+                  <i class="bi bi-arrow-up-down me-2 text-primary"></i>Transaction Type
+                </label>
+                <select class="form-select" id="transaction_type" name="transaction_type" required>
+                  <option value="">Select Type</option>
+                  <option value="SALE">Sale</option>
+                  <option value="PURCHASE">Purchase</option>
+                </select>
+              </div>
+              <div class="col-md-6 mb-3">
+                <label for="item" class="form-label fw-bold">
+                  <i class="bi bi-box me-2 text-primary"></i>Item
+                </label>
+                <select class="form-select" id="item" name="item" required>
+                  <option value="">Select Item</option>
+                  {% for item in items %}
+                    <option value="{{ item.id }}">{{ item.name }} (Stock: {{ item.quantity }})</option>
+                  {% endfor %}
+                </select>
+              </div>
             </div>
+
+            <div class="row">
+              <div class="col-md-6 mb-3" id="supplier-field" style="display:none;">
+                <label for="supplier" class="form-label fw-bold">
+                  <i class="bi bi-truck me-2 text-primary"></i>Supplier
+                </label>
+                <select class="form-select" id="supplier" name="supplier">
+                  <option value="">Select Supplier</option>
+                  {% for supplier in suppliers %}
+                    <option value="{{ supplier.id }}">{{ supplier.name }}</option>
+                  {% endfor %}
+                </select>
+                <small class="text-muted">Select the supplier for this purchase</small>
+              </div>
+              <div class="col-md-6 mb-3" id="customer-field" style="display:none;">
+                <label for="customer" class="form-label fw-bold">
+                  <i class="bi bi-person me-2 text-primary"></i>Customer
+                </label>
+                <select class="form-select" id="customer" name="customer">
+                  <option value="">Select Customer</option>
+                  {% for customer in customers %}
+                    <option value="{{ customer.id }}">{{ customer.name }}</option>
+                  {% endfor %}
+                </select>
+                <small class="text-muted">Select the customer for this sale</small>
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="col-md-4 mb-3">
+                <label for="quantity" class="form-label fw-bold">
+                  <i class="bi bi-hash me-2 text-primary"></i>Quantity
+                </label>
+                <input type="number" class="form-control" id="quantity" name="quantity"
+                       min="1" step="1" required placeholder="Enter quantity">
+              </div>
+              <div class="col-md-4 mb-3">
+                <label for="unit_price" class="form-label fw-bold">
+                  <i class="bi bi-currency-rupee me-2 text-primary"></i>Unit Price
+                </label>
+                <div class="input-group">
+                  <span class="input-group-text">Rs.</span>
+                  <input type="number" class="form-control" id="unit_price" name="unit_price"
+                         min="0" step="0.01" required placeholder="0.00">
+                </div>
+              </div>
+              <div class="col-md-4 mb-3">
+                <label class="form-label fw-bold">
+                  <i class="bi bi-calculator me-2 text-primary"></i>Total Amount
+                </label>
+                <div class="input-group">
+                  <span class="input-group-text">Rs.</span>
+                  <input type="text" class="form-control" id="totalAmount" readonly
+                         placeholder="0.00" style="background-color:#f8f9fa;">
+                </div>
+                <small class="text-muted">Auto-calculated</small>
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label for="payment_method" class="form-label fw-bold">
+                  <i class="bi bi-credit-card me-2 text-primary"></i>Payment Method
+                </label>
+                <select class="form-select" id="payment_method" name="payment_method" required>
+                  <option value="KHALTI">Khalti (Digital Wallet)</option>
+                  <option value="ESEWA">eSewa (Digital Wallet)</option>
+                  <option value="CASH">Cash</option>
+                  <option value="BANK_TRANSFER">Bank Transfer</option>
+                  <option value="CREDIT">Credit</option>
+                </select>
+              </div>
+              <div class="col-md-6 mb-3">
+                <div class="alert alert-info mb-0 h-100 d-flex align-items-center">
+                  <i class="bi bi-info-circle me-2"></i>
+                  <div id="payment-info"><small>Khalti and eSewa payments are processed automatically</small></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label for="notes" class="form-label fw-bold">
+                <i class="bi bi-chat-text me-2 text-primary"></i>Notes (Optional)
+              </label>
+              <textarea class="form-control" id="notes" name="notes" rows="3"
+                        placeholder="Add any additional information about this transaction"></textarea>
+            </div>
+
+            <div class="alert alert-info" id="stockInfo" style="display:none;">
+              <i class="bi bi-info-circle me-2"></i>
+              <strong>Current Stock:</strong> <span id="currentStock">-</span> units
+              <div id="reorderInfo" class="mt-2" style="display:none;">
+                <i class="bi bi-arrow-repeat me-2 text-warning"></i>
+                <strong>Reorder Suggested:</strong> <span id="reorderQuantity">-</span> units
+              </div>
+              <div id="stockWarning" class="mt-2 text-danger" style="display:none;">
+                <i class="bi bi-exclamation-triangle me-2"></i>
+                <strong>Warning:</strong> This sale will result in insufficient stock!
+              </div>
+            </div>
+
+            <div class="d-flex justify-content-between mt-2">
+              <a href="{% url 'inventory:transaction_list' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-x-circle me-1"></i>Cancel
+              </a>
+              <button type="submit" class="btn btn-primary">
+                <i class="bi bi-check-circle me-1"></i>Create Transaction
+              </button>
+            </div>
+          </form>
         </div>
+      </div>
+
+      <div class="row mt-4">
+        <div class="col-md-6">
+          <div class="card border-success">
+            <div class="card-body text-center">
+              <i class="bi bi-arrow-up-circle display-4 text-success mb-3"></i>
+              <h5 class="text-success">Sale Transaction</h5>
+              <p class="text-muted mb-0">Records item sales and reduces inventory stock</p>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="card border-info">
+            <div class="card-body text-center">
+              <i class="bi bi-arrow-down-circle display-4 text-info mb-3"></i>
+              <h5 class="text-info">Purchase Transaction</h5>
+              <p class="text-muted mb-0">Records item purchases and increases inventory stock</p>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
+  </div>
+</div>
+{% endblock %}
 
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    
-    <!-- Custom JS -->
-    <script>
-        // Auto-calculate total amount
-        function calculateTotal() {
-            const quantity = parseFloat(document.getElementById('quantity').value) || 0;
-            const unitPrice = parseFloat(document.getElementById('unit_price').value) || 0;
-            const total = quantity * unitPrice;
-            document.getElementById('totalAmount').value = total.toFixed(2);
+{% block extra_js %}
+<script>
+  function calculateTotal() {
+    const qty = parseFloat(document.getElementById('quantity').value) || 0;
+    const price = parseFloat(document.getElementById('unit_price').value) || 0;
+    document.getElementById('totalAmount').value = (qty * price).toFixed(2);
+  }
+
+  function updateStockInfo() {
+    const itemId = document.getElementById('item').value;
+    if (!itemId) { document.getElementById('stockInfo').style.display = 'none'; return; }
+    fetch(`/inventory/api/item-price/?item_id=${itemId}`)
+      .then(r => r.json())
+      .then(data => {
+        if (!data.error) {
+          document.getElementById('currentStock').textContent = data.quantity;
+          document.getElementById('unit_price').value = data.price;
+          document.getElementById('stockInfo').style.display = 'block';
+          document.getElementById('reorderInfo').style.display = data.needs_reorder ? 'block' : 'none';
+          if (data.needs_reorder) document.getElementById('reorderQuantity').textContent = Math.max(50, data.quantity * 0.5);
+          calculateTotal();
+          checkStockWarning();
         }
+      }).catch(e => console.error(e));
+  }
 
-        // Update stock information when item is selected
-        function updateStockInfo() {
-            const itemSelect = document.getElementById('item');
-            const selectedOption = itemSelect.options[itemSelect.selectedIndex];
-            const stockInfo = document.getElementById('stockInfo');
-            const currentStock = document.getElementById('currentStock');
-            const reorderInfo = document.getElementById('reorderInfo');
-            const reorderQuantity = document.getElementById('reorderQuantity');
-            
-            if (selectedOption.value) {
-                // Get item info via AJAX
-                fetch(`/inventory/api/item-price/?item_id=${selectedOption.value}`)
-                    .then(response => response.json())
-                    .then(data => {
-                        if (!data.error) {
-                            currentStock.textContent = data.quantity;
-                            document.getElementById('unit_price').value = data.price;
-                            stockInfo.style.display = 'block';
-                            
-                            // Show reorder info if needed
-                            if (data.needs_reorder) {
-                                reorderInfo.style.display = 'block';
-                                // Calculate suggested reorder (this would come from backend)
-                                reorderQuantity.textContent = Math.max(50, data.quantity * 0.5);
-                            } else {
-                                reorderInfo.style.display = 'none';
-                            }
-                            
-                            calculateTotal();
-                            checkStockWarning();
-                        }
-                    })
-                    .catch(error => console.error('Error:', error));
-            } else {
-                stockInfo.style.display = 'none';
-            }
-        }
+  function checkStockWarning() {
+    const type = document.getElementById('transaction_type').value;
+    const qty = parseFloat(document.getElementById('quantity').value) || 0;
+    const stock = parseFloat(document.getElementById('currentStock').textContent) || 0;
+    document.getElementById('stockWarning').style.display = (type === 'SALE' && qty > stock) ? 'block' : 'none';
+  }
 
-        // Check if sale quantity exceeds available stock
-        function checkStockWarning() {
-            const transactionType = document.getElementById('transaction_type').value;
-            const quantity = parseFloat(document.getElementById('quantity').value) || 0;
-            const currentStockText = document.getElementById('currentStock').textContent;
-            const currentStockValue = parseFloat(currentStockText) || 0;
-            const stockWarning = document.getElementById('stockWarning');
-            
-            if (transactionType === 'SALE' && quantity > currentStockValue) {
-                stockWarning.style.display = 'block';
-            } else {
-                stockWarning.style.display = 'none';
-            }
-        }
+  function updateSupplierCustomerFields() {
+    const type = document.getElementById('transaction_type').value;
+    document.getElementById('supplier-field').style.display = type === 'PURCHASE' ? 'block' : 'none';
+    document.getElementById('customer-field').style.display = type === 'SALE' ? 'block' : 'none';
+    if (type !== 'PURCHASE') document.getElementById('supplier').value = '';
+    if (type !== 'SALE') document.getElementById('customer').value = '';
+  }
 
-        // Show/hide supplier or customer based on transaction type
-        function updateSupplierCustomerFields() {
-            const transactionType = document.getElementById('transaction_type').value;
-            const supplierField = document.getElementById('supplier-field');
-            const customerField = document.getElementById('customer-field');
-            
-            if (transactionType === 'PURCHASE') {
-                supplierField.style.display = 'block';
-                customerField.style.display = 'none';
-                document.getElementById('customer').value = ''; // Clear customer
-            } else if (transactionType === 'SALE') {
-                supplierField.style.display = 'none';
-                customerField.style.display = 'block';
-                document.getElementById('supplier').value = ''; // Clear supplier
-            } else {
-                supplierField.style.display = 'none';
-                customerField.style.display = 'none';
-            }
-        }
+  function updatePaymentInfo() {
+    const method = document.getElementById('payment_method').value;
+    const msgs = {
+      KHALTI: 'Khalti payments are processed automatically with reference ID',
+      ESEWA: 'eSewa payments are processed via redirect',
+      CASH: 'Cash payments are marked as paid immediately',
+      BANK_TRANSFER: 'Bank transfer payments are marked as paid immediately',
+      CREDIT: 'Credit transactions may require manual payment processing'
+    };
+    document.getElementById('payment-info').innerHTML = `<small>${msgs[method] || ''}</small>`;
+  }
 
-        // Update payment info based on method
-        function updatePaymentInfo() {
-            const paymentMethod = document.getElementById('payment_method').value;
-            const paymentInfo = document.getElementById('payment-info');
-            
-            switch(paymentMethod) {
-                case 'KHALTI':
-                    paymentInfo.innerHTML = '<small>Khalti payments are processed automatically with reference ID</small>';
-                    break;
-                case 'CASH':
-                    paymentInfo.innerHTML = '<small>Cash payments are marked as paid immediately</small>';
-                    break;
-                case 'BANK_TRANSFER':
-                    paymentInfo.innerHTML = '<small>Bank transfer payments are marked as paid immediately</small>';
-                    break;
-                case 'CREDIT':
-                    paymentInfo.innerHTML = '<small>Credit transactions may require manual payment processing</small>';
-                    break;
-            }
-        }
-
-        // Event listeners
-        document.addEventListener('DOMContentLoaded', function() {
-            const quantityInput = document.getElementById('quantity');
-            const unitPriceInput = document.getElementById('unit_price');
-            const itemSelect = document.getElementById('item');
-            const transactionTypeSelect = document.getElementById('transaction_type');
-            const paymentMethodSelect = document.getElementById('payment_method');
-
-            quantityInput.addEventListener('input', function() {
-                calculateTotal();
-                checkStockWarning();
-            });
-            
-            unitPriceInput.addEventListener('input', calculateTotal);
-            itemSelect.addEventListener('change', updateStockInfo);
-            transactionTypeSelect.addEventListener('change', function() {
-                checkStockWarning();
-                updateSupplierCustomerFields();
-            });
-            paymentMethodSelect.addEventListener('change', updatePaymentInfo);
-
-            // Initialize payment info
-            updatePaymentInfo();
-
-            // Form validation
-            const forms = document.querySelectorAll('.needs-validation');
-            Array.from(forms).forEach(form => {
-                form.addEventListener('submit', event => {
-                    if (!form.checkValidity()) {
-                        event.preventDefault();
-                        event.stopPropagation();
-                    }
-                    form.classList.add('was-validated');
-                });
-            });
-        });
-    </script>
-</body>
-</html>
+  document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('quantity').addEventListener('input', function() { calculateTotal(); checkStockWarning(); });
+    document.getElementById('unit_price').addEventListener('input', calculateTotal);
+    document.getElementById('item').addEventListener('change', updateStockInfo);
+    document.getElementById('transaction_type').addEventListener('change', function() { checkStockWarning(); updateSupplierCustomerFields(); });
+    document.getElementById('payment_method').addEventListener('change', updatePaymentInfo);
+    updatePaymentInfo();
+    document.querySelectorAll('.needs-validation').forEach(form => {
+      form.addEventListener('submit', e => { if (!form.checkValidity()) { e.preventDefault(); e.stopPropagation(); } form.classList.add('was-validated'); });
+    });
+  });
+</script>
+{% endblock %}
