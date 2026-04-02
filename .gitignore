@@ -24,3 +24,4 @@ Thumbs.db
 
 # Environment / secret files
 .env
+.env

@@ -1,15 +1,11 @@
 from pathlib import Path
 import os
+from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / '.env')
 
-try:
-    from dotenv import load_dotenv
-    load_dotenv(BASE_DIR / '.env')
-except ImportError:
-    pass
-
-SECRET_KEY = 'django-insecure-j*@n4bm0(-g(u5s9g^7+8v7q88$_nii46psh%xs-ef_=0v$djw'
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-fallback-key')
 
 DEBUG = True
 ALLOWED_HOSTS = []
@@ -67,11 +63,11 @@ WSGI_APPLICATION = 'inventory_system.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'inventory_system',
-        'USER': 'root',
-        'PASSWORD': 'dalluBhakunde@11',
-        'HOST': 'localhost',
-        'PORT': '3306',
+        'NAME': os.getenv('DB_NAME', 'inventory_system'),
+        'USER': os.getenv('DB_USER', 'root'),
+        'PASSWORD': os.getenv('DB_PASSWORD', ''),
+        'HOST': os.getenv('DB_HOST', 'localhost'),
+        'PORT': os.getenv('DB_PORT', '3306'),
     }
 }
 
@@ -96,8 +92,8 @@ MEDIA_ROOT = BASE_DIR / 'media'
 LOGIN_URL = '/users/login/'
 
 # ── Email ─────────────────────────────────────────────────────────────────────
-_email_user = os.environ.get('EMAIL_HOST_USER', '')
-_email_pass = os.environ.get('EMAIL_HOST_PASSWORD', '')
+_email_user = os.getenv('EMAIL_HOST_USER', '')
+_email_pass = os.getenv('EMAIL_HOST_PASSWORD', '')
 
 if _email_user and _email_pass:
     EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
@@ -113,7 +109,7 @@ else:
     DEFAULT_FROM_EMAIL = 'Inventory System <noreply@inventorysystem.com>'
 
 # ── Unsplash ──────────────────────────────────────────────────────────────────
-UNSPLASH_ACCESS_KEY = 'PSYRx2PeCWu_Puu_FgIIC-H4KdexJ7gr6jPipGnS-ig'
+UNSPLASH_ACCESS_KEY = os.getenv('UNSPLASH_ACCESS_KEY', '')
 UNSPLASH_API_URL = 'https://api.unsplash.com/search/photos'
 
 # ── Payment Gateways ──────────────────────────────────────────────────────────
@@ -146,8 +142,8 @@ SOCIALACCOUNT_PROVIDERS = {
         'SCOPE': ['profile', 'email'],
         'AUTH_PARAMS': {'access_type': 'online'},
         'APP': {
-            'client_id': '974053252513-sengp3ii7faoeosmhf8683gtku5iv505.apps.googleusercontent.com',
-            'secret': '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',
+            'client_id': os.getenv('GOOGLE_CLIENT_ID', ''),
+            'secret': os.getenv('GOOGLE_CLIENT_SECRET', ''),
             'key': ''
         }
     }
