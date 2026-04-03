@@ -11,6 +11,7 @@ urlpatterns = [
     path("delete/<int:item_id>/", views.item_delete, name="item_delete"),
     path("export/csv/", views.export_csv, name="export_csv"),
     path("adjust/<int:item_id>/", views.stock_adjustment, name="stock_adjustment"),
+    path("purchase-order/<int:item_id>/", views.create_purchase_order, name="create_purchase_order"),
 
     # Supplier URLs
     path("suppliers/", views.supplier_list, name="supplier_list"),

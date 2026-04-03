@@ -1669,3 +1669,47 @@ def stock_adjustment(request, item_id):
     context = UserRoleManager.get_context_for_user(request.user)
     context.update({'item': item, 'adjustments': adjustments})
     return render(request, 'inventory/stock_adjustment.html', context)
+@manager_or_admin_required
+def create_purchase_order(request, item_id):
+    item = get_object_or_404(Item, id=item_id)
+    from inventory.ml_predictor import ml_predictor
+    suggestion = ml_predictor.calculate_reorder_recommendation(item)
+    suggested_qty = suggestion.get('suggested_quantity', item.reorder_level * 2)
+    if suggested_qty < 1:
+        suggested_qty = item.reorder_level * 2
+    suppliers = Supplier.objects.all()
+
+    if request.method == 'POST':
+        supplier_id = request.POST.get('supplier_id')
+        quantity    = request.POST.get('quantity')
+        unit_price  = request.POST.get('unit_price')
+        notes       = request.POST.get('notes', '').strip()
+        try:
+            qty   = int(quantity)
+            price = float(unit_price)
+            if qty <= 0 or price < 0:
+                raise ValueError
+            supplier = get_object_or_404(Supplier, id=supplier_id) if supplier_id else None
+            Transaction.objects.create(
+                item=item, transaction_type='PURCHASE', quantity=qty,
+                unit_price=price, total_amount=qty * price,
+                payment_status='PAID', payment_method='BANK_TRANSFER',
+                supplier=supplier, performed_by=request.user,
+                notes=notes or f'AI reorder suggestion. Suggested qty: {suggested_qty}',
+            )
+            if supplier and not item.supplier:
+                item.supplier = supplier
+                item.save()
+            messages.success(request, f'✅ Purchase order created for {qty} units of {item.name}. New stock: {item.quantity + qty} units.')
+            return redirect('inventory:reorder_suggestions')
+        except (ValueError, TypeError):
+            messages.error(request, 'Please enter valid quantity and price.')
+
+    context = UserRoleManager.get_context_for_user(request.user)
+    context.update({
+        'item': item, 'suggestion': suggestion, 'suggested_qty': suggested_qty,
+        'suppliers': suppliers,
+        'default_supplier': item.supplier,
+        'default_price': item.cost_price if item.cost_price > 0 else item.price * 0.6,
+    })
+    return render(request, 'inventory/create_purchase_order.html', context)

@@ -20,6 +20,7 @@ class ActiveManager(models.Manager):
 
 class Item(models.Model):
     name = models.CharField(max_length=100)
+    supplier = models.ForeignKey('Supplier', on_delete=models.SET_NULL, null=True, blank=True, related_name='items')
     sku = models.CharField(max_length=50, unique=True, db_index=True, null=True, blank=True, help_text="Stock Keeping Unit - Unique identifier")
     quantity = models.IntegerField()
     price = models.DecimalField(max_digits=10, decimal_places=2)
