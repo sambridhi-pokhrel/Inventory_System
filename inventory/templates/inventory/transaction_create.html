@@ -8,11 +8,11 @@
   <div class="container">
     <div class="row align-items-center">
       <div class="col-md-8">
-        <h1 class="display-5 fw-bold mb-2"><i class="bi bi-plus-circle me-3"></i>Create Transaction</h1>
+        <h1><i class="bi bi-plus-circle me-2"></i>Create Transaction</h1>
         <p class="lead mb-0">Record a new sale or purchase transaction</p>
       </div>
       <div class="col-md-4 text-md-end">
-        <a href="{% url 'inventory:transaction_list' %}" class="btn btn-outline-light">
+        <a href="{% url 'inventory:transaction_list' %}" class="btn btn-outline-light btn-sm">
           <i class="bi bi-arrow-left me-1"></i>Back to Transactions
         </a>
       </div>
@@ -21,23 +21,43 @@
 </div>
 {% endblock %}
 
+{% block extra_css %}
+<style>
+  .price-box { background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:1rem; }
+  .price-box .lbl { font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#94a3b8; margin-bottom:.25rem; }
+  .price-box .val { font-size:1.2rem; font-weight:800; letter-spacing:-.03em; }
+  .profit-box { background:rgba(5,150,105,.06); border:1px solid #a7f3d0; border-radius:10px; padding:1rem; }
+  .profit-box .lbl { font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#059669; margin-bottom:.25rem; }
+  .profit-box .val { font-size:1.2rem; font-weight:800; color:#059669; }
+  .loss-box { background:rgba(220,38,38,.06); border:1px solid #fecaca; }
+  .loss-box .lbl, .loss-box .val { color:#dc2626 !important; }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="container py-4">
+<div class="container">
   <div class="row justify-content-center">
     <div class="col-lg-8">
-      <div class="card border-0 shadow-sm">
-        <div class="card-header" style="background:linear-gradient(135deg,#714b67,#9c7a8a);color:#fff;border-radius:8px 8px 0 0;">
-          <h5 class="mb-0"><i class="bi bi-receipt me-2"></i>Transaction Details</h5>
+
+      {% if messages %}
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
+          {{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        {% endfor %}
+      {% endif %}
+
+      <div class="card">
+        <div class="card-header">
+          <h6 class="mb-0"><i class="bi bi-receipt me-2 text-primary"></i>Transaction Details</h6>
         </div>
         <div class="card-body p-4">
-          <form method="post" class="needs-validation" novalidate>
+          <form method="post" novalidate>
             {% csrf_token %}
 
             <div class="row">
               <div class="col-md-6 mb-3">
-                <label for="transaction_type" class="form-label fw-bold">
-                  <i class="bi bi-arrow-up-down me-2 text-primary"></i>Transaction Type
-                </label>
+                <label class="form-label">Transaction Type</label>
                 <select class="form-select" id="transaction_type" name="transaction_type" required>
                   <option value="">Select Type</option>
                   <option value="SALE">Sale</option>
@@ -45,81 +65,119 @@
                 </select>
               </div>
               <div class="col-md-6 mb-3">
-                <label for="item" class="form-label fw-bold">
-                  <i class="bi bi-box me-2 text-primary"></i>Item
-                </label>
+                <label class="form-label">Item</label>
                 <select class="form-select" id="item" name="item" required>
                   <option value="">Select Item</option>
                   {% for item in items %}
-                    <option value="{{ item.id }}">{{ item.name }} (Stock: {{ item.quantity }})</option>
+                  <option value="{{ item.id }}"
+                    data-price="{{ item.price }}"
+                    data-cost="{{ item.cost_price }}"
+                    data-stock="{{ item.quantity }}"
+                    data-reorder="{{ item.needs_reorder|yesno:'true,false' }}">
+                    {{ item.name }} (Stock: {{ item.quantity }})
+                  </option>
                   {% endfor %}
                 </select>
               </div>
             </div>
 
+            <!-- Supplier / Customer -->
             <div class="row">
               <div class="col-md-6 mb-3" id="supplier-field" style="display:none;">
-                <label for="supplier" class="form-label fw-bold">
-                  <i class="bi bi-truck me-2 text-primary"></i>Supplier
-                </label>
+                <label class="form-label"><i class="bi bi-truck me-1 text-primary"></i>Supplier</label>
                 <select class="form-select" id="supplier" name="supplier">
                   <option value="">Select Supplier</option>
                   {% for supplier in suppliers %}
-                    <option value="{{ supplier.id }}">{{ supplier.name }}</option>
+                  <option value="{{ supplier.id }}">{{ supplier.name }}</option>
                   {% endfor %}
                 </select>
-                <small class="text-muted">Select the supplier for this purchase</small>
               </div>
               <div class="col-md-6 mb-3" id="customer-field" style="display:none;">
-                <label for="customer" class="form-label fw-bold">
-                  <i class="bi bi-person me-2 text-primary"></i>Customer
-                </label>
+                <label class="form-label"><i class="bi bi-person me-1 text-primary"></i>Customer</label>
                 <select class="form-select" id="customer" name="customer">
                   <option value="">Select Customer</option>
                   {% for customer in customers %}
-                    <option value="{{ customer.id }}">{{ customer.name }}</option>
+                  <option value="{{ customer.id }}">{{ customer.name }}</option>
                   {% endfor %}
                 </select>
-                <small class="text-muted">Select the customer for this sale</small>
               </div>
             </div>
 
+            <!-- Price info boxes (shown after item selected) -->
+            <div id="price-info" style="display:none;" class="mb-3">
+              <div class="row g-3">
+                <div class="col-4">
+                  <div class="price-box">
+                    <div class="lbl">Selling Price</div>
+                    <div class="val text-primary" id="info-selling">Rs. 0</div>
+                  </div>
+                </div>
+                <div class="col-4">
+                  <div class="price-box">
+                    <div class="lbl">Cost Price</div>
+                    <div class="val text-warning" id="info-cost">Rs. 0</div>
+                  </div>
+                </div>
+                <div class="col-4">
+                  <div class="profit-box" id="profit-box">
+                    <div class="lbl">Profit / Unit</div>
+                    <div class="val" id="info-profit">Rs. 0</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Quantity + Unit Price + Total -->
             <div class="row">
               <div class="col-md-4 mb-3">
-                <label for="quantity" class="form-label fw-bold">
-                  <i class="bi bi-hash me-2 text-primary"></i>Quantity
-                </label>
+                <label class="form-label">Quantity</label>
                 <input type="number" class="form-control" id="quantity" name="quantity"
-                       min="1" step="1" required placeholder="Enter quantity">
+                  min="1" step="1" required placeholder="Enter quantity">
               </div>
               <div class="col-md-4 mb-3">
-                <label for="unit_price" class="form-label fw-bold">
-                  <i class="bi bi-currency-rupee me-2 text-primary"></i>Unit Price
-                </label>
+                <label class="form-label" id="unit-price-label">Unit Price</label>
                 <div class="input-group">
                   <span class="input-group-text">Rs.</span>
                   <input type="number" class="form-control" id="unit_price" name="unit_price"
-                         min="0" step="0.01" required placeholder="0.00">
+                    min="0" step="0.01" required placeholder="0.00">
                 </div>
+                <small class="text-muted" id="unit-price-hint"></small>
               </div>
               <div class="col-md-4 mb-3">
-                <label class="form-label fw-bold">
-                  <i class="bi bi-calculator me-2 text-primary"></i>Total Amount
-                </label>
+                <label class="form-label">Total Amount</label>
                 <div class="input-group">
                   <span class="input-group-text">Rs.</span>
                   <input type="text" class="form-control" id="totalAmount" readonly
-                         placeholder="0.00" style="background-color:#f8f9fa;">
+                    placeholder="0.00" style="background:#f8fafc;">
                 </div>
                 <small class="text-muted">Auto-calculated</small>
               </div>
             </div>
 
+            <!-- Total profit box -->
+            <div id="total-profit-box" style="display:none;" class="mb-3">
+              <div class="profit-box" id="total-profit-wrapper">
+                <div class="row text-center">
+                  <div class="col-4">
+                    <div class="lbl">Total Revenue</div>
+                    <div class="val" id="total-revenue">Rs. 0</div>
+                  </div>
+                  <div class="col-4">
+                    <div class="lbl">Total Cost</div>
+                    <div class="val" id="total-cost">Rs. 0</div>
+                  </div>
+                  <div class="col-4">
+                    <div class="lbl">Total Profit</div>
+                    <div class="val" id="total-profit">Rs. 0</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Payment method -->
             <div class="row">
               <div class="col-md-6 mb-3">
-                <label for="payment_method" class="form-label fw-bold">
-                  <i class="bi bi-credit-card me-2 text-primary"></i>Payment Method
-                </label>
+                <label class="form-label">Payment Method</label>
                 <select class="form-select" id="payment_method" name="payment_method" required>
                   <option value="KHALTI">Khalti (Digital Wallet)</option>
                   <option value="ESEWA">eSewa (Digital Wallet)</option>
@@ -129,35 +187,27 @@
                 </select>
               </div>
               <div class="col-md-6 mb-3">
-                <div class="alert alert-info mb-0 h-100 d-flex align-items-center">
+                <div class="alert alert-info mb-0 h-100 d-flex align-items-center py-2">
                   <i class="bi bi-info-circle me-2"></i>
-                  <div id="payment-info"><small>Khalti and eSewa payments are processed automatically</small></div>
+                  <small id="payment-info">Khalti payments are processed automatically</small>
                 </div>
               </div>
             </div>
 
-            <div class="mb-3">
-              <label for="notes" class="form-label fw-bold">
-                <i class="bi bi-chat-text me-2 text-primary"></i>Notes (Optional)
-              </label>
-              <textarea class="form-control" id="notes" name="notes" rows="3"
-                        placeholder="Add any additional information about this transaction"></textarea>
+            <!-- Stock warning -->
+            <div id="stockWarning" class="alert alert-danger" style="display:none;">
+              <i class="bi bi-exclamation-triangle me-2"></i>
+              <strong>Warning:</strong> This sale exceeds current stock!
             </div>
 
-            <div class="alert alert-info" id="stockInfo" style="display:none;">
-              <i class="bi bi-info-circle me-2"></i>
-              <strong>Current Stock:</strong> <span id="currentStock">-</span> units
-              <div id="reorderInfo" class="mt-2" style="display:none;">
-                <i class="bi bi-arrow-repeat me-2 text-warning"></i>
-                <strong>Reorder Suggested:</strong> <span id="reorderQuantity">-</span> units
-              </div>
-              <div id="stockWarning" class="mt-2 text-danger" style="display:none;">
-                <i class="bi bi-exclamation-triangle me-2"></i>
-                <strong>Warning:</strong> This sale will result in insufficient stock!
-              </div>
+            <!-- Notes -->
+            <div class="mb-4">
+              <label class="form-label">Notes (Optional)</label>
+              <textarea class="form-control" id="notes" name="notes" rows="2"
+                placeholder="Add any additional information..."></textarea>
             </div>
 
-            <div class="d-flex justify-content-between mt-2">
+            <div class="d-flex justify-content-between">
               <a href="{% url 'inventory:transaction_list' %}" class="btn btn-outline-secondary">
                 <i class="bi bi-x-circle me-1"></i>Cancel
               </a>
@@ -169,26 +219,6 @@
         </div>
       </div>
 
-      <div class="row mt-4">
-        <div class="col-md-6">
-          <div class="card border-success">
-            <div class="card-body text-center">
-              <i class="bi bi-arrow-up-circle display-4 text-success mb-3"></i>
-              <h5 class="text-success">Sale Transaction</h5>
-              <p class="text-muted mb-0">Records item sales and reduces inventory stock</p>
-            </div>
-          </div>
-        </div>
-        <div class="col-md-6">
-          <div class="card border-info">
-            <div class="card-body text-center">
-              <i class="bi bi-arrow-down-circle display-4 text-info mb-3"></i>
-              <h5 class="text-info">Purchase Transaction</h5>
-              <p class="text-muted mb-0">Records item purchases and increases inventory stock</p>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   </div>
 </div>
@@ -196,67 +226,120 @@
 
 {% block extra_js %}
 <script>
-  function calculateTotal() {
-    const qty = parseFloat(document.getElementById('quantity').value) || 0;
-    const price = parseFloat(document.getElementById('unit_price').value) || 0;
-    document.getElementById('totalAmount').value = (qty * price).toFixed(2);
+  let itemData = {};
+
+  // Collect item data from select options
+  document.querySelectorAll('#item option[value]').forEach(opt => {
+    if (opt.value) {
+      itemData[opt.value] = {
+        price: parseFloat(opt.dataset.price) || 0,
+        cost:  parseFloat(opt.dataset.cost)  || 0,
+        stock: parseInt(opt.dataset.stock)   || 0,
+        reorder: opt.dataset.reorder === 'true'
+      };
+    }
+  });
+
+  function getType()  { return document.getElementById('transaction_type').value; }
+  function getItemId(){ return document.getElementById('item').value; }
+  function getQty()   { return parseFloat(document.getElementById('quantity').value) || 0; }
+  function getPrice() { return parseFloat(document.getElementById('unit_price').value) || 0; }
+
+  function updatePriceBoxes() {
+    const id   = getItemId();
+    const type = getType();
+    if (!id || !type) { document.getElementById('price-info').style.display = 'none'; return; }
+
+    const d = itemData[id];
+    if (!d) return;
+
+    document.getElementById('price-info').style.display = 'block';
+    document.getElementById('info-selling').textContent = 'Rs. ' + d.price.toLocaleString('en-IN');
+    document.getElementById('info-cost').textContent    = 'Rs. ' + d.cost.toLocaleString('en-IN');
+
+    const profit = d.price - d.cost;
+    document.getElementById('info-profit').textContent  = 'Rs. ' + profit.toLocaleString('en-IN');
+    const pb = document.getElementById('profit-box');
+    if (profit < 0) { pb.className = 'profit-box loss-box'; }
+    else { pb.className = 'profit-box'; }
+
+    // Auto-fill unit price
+    if (type === 'SALE') {
+      document.getElementById('unit_price').value = d.price.toFixed(2);
+      document.getElementById('unit-price-label').textContent = 'Selling Price';
+      document.getElementById('unit-price-hint').textContent  = 'Current selling price: Rs. ' + d.price;
+    } else {
+      document.getElementById('unit_price').value = d.cost > 0 ? d.cost.toFixed(2) : '';
+      document.getElementById('unit-price-label').textContent = 'Cost Price (per unit)';
+      document.getElementById('unit-price-hint').textContent  = 'Last cost price: Rs. ' + d.cost;
+    }
+
+    updateTotals();
   }
 
-  function updateStockInfo() {
-    const itemId = document.getElementById('item').value;
-    if (!itemId) { document.getElementById('stockInfo').style.display = 'none'; return; }
-    fetch(`/inventory/api/item-price/?item_id=${itemId}`)
-      .then(r => r.json())
-      .then(data => {
-        if (!data.error) {
-          document.getElementById('currentStock').textContent = data.quantity;
-          document.getElementById('unit_price').value = data.price;
-          document.getElementById('stockInfo').style.display = 'block';
-          document.getElementById('reorderInfo').style.display = data.needs_reorder ? 'block' : 'none';
-          if (data.needs_reorder) document.getElementById('reorderQuantity').textContent = Math.max(50, data.quantity * 0.5);
-          calculateTotal();
-          checkStockWarning();
-        }
-      }).catch(e => console.error(e));
+  function updateTotals() {
+    const id   = getItemId();
+    const type = getType();
+    const qty  = getQty();
+    const price = getPrice();
+
+    const total = qty * price;
+    document.getElementById('totalAmount').value = total.toFixed(2);
+
+    if (!id || !type || qty === 0) {
+      document.getElementById('total-profit-box').style.display = 'none';
+      return;
+    }
+
+    const d = itemData[id];
+    if (!d) return;
+
+    if (type === 'SALE') {
+      const revenue     = qty * price;
+      const cost        = qty * d.cost;
+      const totalProfit = revenue - cost;
+
+      document.getElementById('total-profit-box').style.display  = 'block';
+      document.getElementById('total-revenue').textContent = 'Rs. ' + revenue.toLocaleString('en-IN', {minimumFractionDigits:2});
+      document.getElementById('total-cost').textContent    = 'Rs. ' + cost.toLocaleString('en-IN', {minimumFractionDigits:2});
+      document.getElementById('total-profit').textContent  = 'Rs. ' + totalProfit.toLocaleString('en-IN', {minimumFractionDigits:2});
+
+      const tw = document.getElementById('total-profit-wrapper');
+      tw.className = totalProfit >= 0 ? 'profit-box' : 'profit-box loss-box';
+
+      // Stock warning
+      document.getElementById('stockWarning').style.display = (qty > d.stock) ? 'block' : 'none';
+    } else {
+      document.getElementById('total-profit-box').style.display = 'none';
+      document.getElementById('stockWarning').style.display = 'none';
+    }
   }
 
-  function checkStockWarning() {
-    const type = document.getElementById('transaction_type').value;
-    const qty = parseFloat(document.getElementById('quantity').value) || 0;
-    const stock = parseFloat(document.getElementById('currentStock').textContent) || 0;
-    document.getElementById('stockWarning').style.display = (type === 'SALE' && qty > stock) ? 'block' : 'none';
-  }
-
-  function updateSupplierCustomerFields() {
-    const type = document.getElementById('transaction_type').value;
+  function updateSupplierCustomer() {
+    const type = getType();
     document.getElementById('supplier-field').style.display = type === 'PURCHASE' ? 'block' : 'none';
-    document.getElementById('customer-field').style.display = type === 'SALE' ? 'block' : 'none';
-    if (type !== 'PURCHASE') document.getElementById('supplier').value = '';
-    if (type !== 'SALE') document.getElementById('customer').value = '';
+    document.getElementById('customer-field').style.display = type === 'SALE'     ? 'block' : 'none';
+    updatePriceBoxes();
   }
 
   function updatePaymentInfo() {
-    const method = document.getElementById('payment_method').value;
     const msgs = {
       KHALTI: 'Khalti payments are processed automatically with reference ID',
-      ESEWA: 'eSewa payments are processed via redirect',
-      CASH: 'Cash payments are marked as paid immediately',
+      ESEWA:  'eSewa payments are processed via redirect',
+      CASH:   'Cash payments are marked as paid immediately',
       BANK_TRANSFER: 'Bank transfer payments are marked as paid immediately',
       CREDIT: 'Credit transactions may require manual payment processing'
     };
-    document.getElementById('payment-info').innerHTML = `<small>${msgs[method] || ''}</small>`;
+    document.getElementById('payment-info').textContent = msgs[document.getElementById('payment_method').value] || '';
   }
 
   document.addEventListener('DOMContentLoaded', function() {
-    document.getElementById('quantity').addEventListener('input', function() { calculateTotal(); checkStockWarning(); });
-    document.getElementById('unit_price').addEventListener('input', calculateTotal);
-    document.getElementById('item').addEventListener('change', updateStockInfo);
-    document.getElementById('transaction_type').addEventListener('change', function() { checkStockWarning(); updateSupplierCustomerFields(); });
+    document.getElementById('transaction_type').addEventListener('change', updateSupplierCustomer);
+    document.getElementById('item').addEventListener('change', updatePriceBoxes);
+    document.getElementById('quantity').addEventListener('input', updateTotals);
+    document.getElementById('unit_price').addEventListener('input', updateTotals);
     document.getElementById('payment_method').addEventListener('change', updatePaymentInfo);
     updatePaymentInfo();
-    document.querySelectorAll('.needs-validation').forEach(form => {
-      form.addEventListener('submit', e => { if (!form.checkValidity()) { e.preventDefault(); e.stopPropagation(); } form.classList.add('was-validated'); });
-    });
   });
 </script>
 {% endblock %}

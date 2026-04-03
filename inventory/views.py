@@ -556,6 +556,9 @@ def transaction_create(request):
                 supplier=supplier,  # Add supplier
                 customer=customer,  # Add customer
             )
+            if transaction_type == 'PURCHASE':
+                item.cost_price = unit_price
+                item.save(update_fields=['cost_price'])
             
             # Show appropriate message based on payment status
             if payment_status == 'PENDING':
