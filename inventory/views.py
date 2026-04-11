@@ -828,20 +828,20 @@ def analytics_dashboard(request):
         .order_by('month')
     )
     from dateutil.relativedelta import relativedelta
-    compare_labels = []
-    compare_sales = []
+
+    rev_map = {r['month'].strftime('%b %Y'): float(r['revenue']) for r in monthly_revenue}
+    pur_map = {r['month'].strftime('%b %Y'): float(r['total']) for r in monthly_purchases}
+
+    compare_labels    = []
+    compare_sales     = []
     compare_purchases = []
-    
+
     for i in range(5, -1, -1):
         target = today.replace(day=1) - relativedelta(months=i)
-        compare_labels.append(target.strftime('%b %Y'))
-        
-        rev_map = {r['month'].strftime('%b %Y'): float(r['revenue']) for r in monthly_revenue}
-        pur_map = {r['month'].strftime('%b %Y'): float(r['total']) for r in monthly_purchases}
-        
-        for label in compare_labels:
-            compare_sales.append(rev_map.get(label, 0))
-            compare_purchases.append(pur_map.get(label, 0))
+        label  = target.strftime('%b %Y')
+        compare_labels.append(label)
+        compare_sales.append(rev_map.get(label, 0))
+        compare_purchases.append(pur_map.get(label, 0))
 
     # --- Summary stats ---
     total_sales_amount = Transaction.objects.filter(
