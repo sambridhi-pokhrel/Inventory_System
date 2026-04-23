@@ -51,7 +51,7 @@
         <input type="date" name="date_to" class="form-control" value="{{ filters.date_to }}" style="max-width:150px;">
         <button type="submit" class="btn btn-outline-primary"><i class="bi bi-funnel"></i></button>
         {% if filters.type or filters.payment_status or filters.date_from or filters.date_to %}
-          <a href="{% url 'inventory:transaction_list' %}" class="btn btn-outline-secondary"><i class="bi bi-x"></i></a>
+          <a href="{% url 'inventory:transaction_list' %}" class="btn btn-outline-secondary" style="color:#0f172a !important;border-color:#94a3b8 !important;background:#fff !important;font-weight:600 !important;"><i class="bi bi-x"></i></a>
         {% endif %}
       </form>
     </div>
@@ -224,3 +224,4 @@
   </div>
 </div>
 {% endblock %}
+

@@ -147,7 +147,7 @@
             <a href="{% url 'inventory:transaction_create' %}" class="btn btn-success"><i class="bi bi-plus-circle me-1"></i>New Transaction</a>
             {% endif %}
             <a href="{% url 'inventory:ai_demand_forecast' item.id %}" class="btn btn-info"><i class="bi bi-robot me-1"></i>AI Forecast</a>
-            <a href="{% url 'inventory:item_list' %}" class="btn btn-outline-secondary"><i class="bi bi-list me-1"></i>All Items</a>
+            <a href="{% url 'inventory:item_list' %}" class="btn btn-outline-secondary" style="color:#0f172a !important;border-color:#94a3b8 !important;background:#fff !important;font-weight:600 !important;"><i class="bi bi-list me-1"></i>All Items</a>
           </div>
         </div>
       </div>
@@ -155,3 +155,4 @@
   </div>
 </div>
 {% endblock %}
+

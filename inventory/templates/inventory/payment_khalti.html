@@ -46,7 +46,7 @@
             You will be redirected to Khalti's secure payment page. After completing, you'll return to this system.
           </div>
           <div class="text-center">
-            <a href="{% url 'inventory:transaction_detail' transaction.id %}" class="btn btn-outline-secondary">
+            <a href="{% url 'inventory:transaction_detail' transaction.id %}" class="btn btn-outline-secondary" style="color:#0f172a !important;border-color:#94a3b8 !important;background:#fff !important;font-weight:600 !important;">
               <i class="bi bi-x-circle me-1"></i>Cancel Payment
             </a>
           </div>
@@ -81,3 +81,4 @@ document.getElementById('payment-button').addEventListener('click', function() {
 });
 </script>
 {% endblock %}
+

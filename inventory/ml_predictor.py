@@ -303,6 +303,10 @@ class InventoryDemandPredictor:
             raw_qty = max(0, int(shortage_risk + predicted_demand * 0.5))
             cap = max(item.reorder_level * 3, 50)  # max 3× reorder level, min 50
             suggested_quantity = min(raw_qty, cap)
+            
+            # Never suggest 0 units when reorder is needed
+            if needs_reorder and suggested_quantity < 1:
+                suggested_quantity = max(item.reorder_level, 10)
         else:
             suggested_quantity = 0
 

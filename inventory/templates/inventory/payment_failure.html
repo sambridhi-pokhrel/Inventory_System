@@ -55,10 +55,10 @@
                 <i class="bi bi-arrow-repeat me-1"></i>Retry eSewa Payment
               </a>
             {% endif %}
-            <a href="{% url 'inventory:transaction_detail' transaction.id %}" class="btn btn-outline-secondary">
+            <a href="{% url 'inventory:transaction_detail' transaction.id %}" class="btn btn-outline-secondary" style="color:#0f172a !important;border-color:#94a3b8 !important;background:#fff !important;font-weight:600 !important;">
               <i class="bi bi-file-text me-1"></i>View Transaction
             </a>
-            <a href="{% url 'inventory:transaction_list' %}" class="btn btn-outline-secondary">
+            <a href="{% url 'inventory:transaction_list' %}" class="btn btn-outline-secondary" style="color:#0f172a !important;border-color:#94a3b8 !important;background:#fff !important;font-weight:600 !important;">
               <i class="bi bi-list me-1"></i>All Transactions
             </a>
           </div>
@@ -70,3 +70,4 @@
   </div>
 </div>
 {% endblock %}
+

@@ -131,7 +131,7 @@
               <button type="submit" class="btn btn-primary">
                 <i class="bi bi-check-circle me-1"></i>Apply Adjustment
               </button>
-              <a href="{% url 'inventory:item_list' %}" class="btn btn-outline-secondary">
+              <a href="{% url 'inventory:item_list' %}" class="btn btn-outline-secondary" style="color:#0f172a !important;border-color:#94a3b8 !important;background:#fff !important;font-weight:600 !important;">
                 <i class="bi bi-x me-1"></i>Cancel
               </a>
             </div>
@@ -200,3 +200,4 @@
   typeInputs.forEach(r => r.addEventListener('change', updatePreview));
 </script>
 {% endblock %}
+
