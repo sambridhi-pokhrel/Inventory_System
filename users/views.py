@@ -12,6 +12,7 @@ from .forms import CustomUserCreationForm, CustomPasswordResetForm
 from .models import UserProfile
 from .decorators import approved_user_required, admin_required, role_required
 from .utils import UserRoleManager
+from django.db.models import F
 
 
 def login_view(request):
@@ -136,7 +137,7 @@ def dashboard(request):
 
     from inventory.models import Item
     total_items = Item.objects.count()
-    low_stock_items = Item.objects.filter(quantity__lte=10)
+    low_stock_items = Item.objects.filter(quantity__lte=F('reorder_level'), quantity__gt=0)
     low_stock_count = low_stock_items.count()
     out_of_stock_count = Item.objects.filter(quantity=0).count()
 
