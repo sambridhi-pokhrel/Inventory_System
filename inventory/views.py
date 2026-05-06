@@ -562,12 +562,6 @@ def transaction_create(request):
             
             # Show appropriate message based on payment status
             if payment_status == 'PENDING':
-                messages.success(
-                    request,
-                    f"Transaction #{transaction.id} created successfully! "
-                    f"Please complete payment to finalize the transaction."
-                )
-                # Redirect to transaction detail page where user can pay
                 return redirect('inventory:transaction_detail', transaction_id=transaction.id)
             else:
                 messages.success(
@@ -1028,7 +1022,7 @@ def initiate_khalti_payment(request, transaction_id):
     
     # Check if simulation mode is enabled
     if PaymentSimulator.is_simulation_mode():
-        messages.info(request, "🧪 Using simulation mode (Khalti gateway not accessible)")
+        pass
         return redirect('inventory:simulate_payment_page', transaction_id=transaction_id, gateway_type='khalti')
     
     # Check if Khalti is enabled
@@ -1155,7 +1149,7 @@ def initiate_esewa_payment(request, transaction_id):
     
     # Check if simulation mode is enabled
     if PaymentSimulator.is_simulation_mode():
-        messages.info(request, "🧪 Using simulation mode (eSewa gateway not accessible)")
+        pass
         return redirect('inventory:simulate_payment_page', transaction_id=transaction_id, gateway_type='esewa')
     
     # Check if eSewa is enabled
@@ -1368,9 +1362,8 @@ def simulate_payment_complete(request, transaction_id):
             
             messages.success(
                 request,
-                f"✅ Payment simulated successfully! Transaction #{transaction_obj.id} completed. "
-                f"Reference: {transaction_obj.payment_reference} (Simulation Mode)"
-            )
+                f"Payment completed successfully! Transaction #{transaction_obj.id} has been confirmed."
+                )
             return redirect('inventory:payment_success', transaction_id=transaction_obj.id)
             
         except ValidationError as e:
@@ -1400,9 +1393,9 @@ def simulate_payment_complete(request, transaction_id):
         transaction_obj.save()
         
         messages.error(
-            request,
-            f"❌ Payment simulation failed. Transaction #{transaction_obj.id} marked as failed. (Simulation Mode)"
-        )
+    request,
+    f"Payment failed. Transaction #{transaction_obj.id} could not be completed."
+    )
         return redirect('inventory:payment_failure', transaction_id=transaction_obj.id)
 
 
